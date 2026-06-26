@@ -162,4 +162,58 @@ def verificar_cancelamentos(dataframe: pd.DataFrame, coluna_data_cancelamento: s
 
     return dataframe_copia
 
+def remover_documentos_duplicados_reprocessamento(dataframe: pd.DataFrame,tipo_documento: str) -> pd.DataFrame:
+    """
+    Remove documentos duplicados de um DataFrame com base no tipo de documento,
+    garantindo que informações da coluna 'Observações' não sejam perdidas no processo.
 
+    A lógica realiza um agrupamento (groupby) pelas chaves do documento e propaga
+    qualquer texto existente na coluna 'Observações' (usando ffill e bfill) para todas
+    as linhas duplicadas do mesmo grupo. Isso previne a perda de dados textuais antes
+    da execução do `drop_duplicates(keep="last")`.
+
+    Parameters:
+    ----------
+    dataframe : pd.DataFrame
+        O DataFrame original contendo os dados dos documentos.
+    tipo_documento : str
+        O tipo de documento para mapeamento das chaves ("sat", "cte" ou "servico").
+
+    Returns:
+    -------
+    pd.DataFrame
+        Um novo DataFrame sem registros duplicados e com observações preservadas.
+    """
+    
+    dataframe_copia = dataframe.copy()
+
+    chaves_deduplicacao = {
+        "sat": ["ChaveAcesso"],
+        "cte": ["ChaveAcesso"],
+        "servico": ["Numero_Documento", "CNPJ/CPF"]
+    }
+
+    colunas_chave = chaves_deduplicacao[tipo_documento]
+
+    # Se existir Observações, preserva a observação preenchida
+    # antes de remover duplicados.
+    if "Observações" in dataframe_copia.columns:
+        dataframe_copia["Observações"] = (
+            dataframe_copia["Observações"]
+            .astype("string")
+            .str.strip()
+            .replace(["", "nan", "NaN", "None", "<NA>"], pd.NA)
+        )
+
+        dataframe_copia["Observações"] = (
+            dataframe_copia
+            .groupby(colunas_chave, dropna=False)["Observações"]
+            .transform(lambda coluna: coluna.ffill().bfill())
+        )
+
+    dataframe_copia = dataframe_copia.drop_duplicates(
+        subset=colunas_chave,
+        keep="last"
+    )
+
+    return dataframe_copia

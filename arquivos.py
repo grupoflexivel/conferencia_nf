@@ -2,6 +2,7 @@ from configs import NOMES_ABAS_NO_EXCEL,COLUNAS_REPROCESSAMENTO
 import pandas as pd
 import numpy as np
 from tkinter import Tk, filedialog, messagebox
+from comparacao import remover_documentos_duplicados_reprocessamento
 
 def selecionar_arquivo(titulo: str, obrigatorio: bool = True) -> str | None:
     """
@@ -147,6 +148,8 @@ def adicionar_pendentes_mes_anterior(dataframe_atual :pd.DataFrame,
         [dataframe_mes_anterior, dataframe_atual],
         ignore_index=True
     )
+
+    dataframe_atualizado =remover_documentos_duplicados_reprocessamento(dataframe_atualizado,tipo_documento)
 
     if "Valor" in dataframe_atualizado.columns:
         dataframe_atualizado["Valor"] = pd.to_numeric(

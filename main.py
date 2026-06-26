@@ -12,7 +12,7 @@ from limpeza import (limpar_cnpj_cpf,limpar_numero_documento,limpar_chave_acesso
     tratar_valor_sem_virgula,converter_data_mista,ordenar_por_data_emissao,limpar_numero_documento_servicos)
 from excel_utils import formatar_planilha_excel
 from arquivos import adicionar_pendentes_mes_anterior, carregar_notas_pendentes_mes_anterior,selecionar_arquivo
-from comparacao import mapear_coluna_status, analisar_valores_lançados, verificar_cancelamentos, verificar_situacao_notas_canceladas
+from comparacao import mapear_coluna_status, analisar_valores_lançados, verificar_cancelamentos, verificar_situacao_notas_canceladas, remover_documentos_duplicados_reprocessamento
 
 # Silencia os avisos chatos do openpyxl
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
