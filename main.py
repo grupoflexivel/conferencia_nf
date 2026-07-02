@@ -7,6 +7,7 @@ import time
 from tkinter import Tk, filedialog, messagebox
 from io import StringIO
 
+from layouts.matriz import LayoutMatriz
 from relatorios_csw import concatenar_relatorios_erp
 from configs import valores_vazios,COLUNAS_IMPORTADAS,COLUNAS_SALVAS,COLUNAS_REPROCESSAMENTO,NOMES_ABAS_NO_EXCEL
 from limpeza import (limpar_cnpj_cpf,limpar_numero_documento,limpar_chave_acesso,limpar_colunas_se_coluna_referencia_nulo,converter_valor_monetario_brasileiro,
@@ -51,74 +52,24 @@ def main():
     #---------------------------------------------------------------------------------------------------
     #INICIO DA APLICAÇÃO
     #---------------------------------------------------------------------------------------------------
-    arquivo_anterior = selecionar_arquivo("Selecione o arquivo de notas do mês passado", obrigatorio=False)
-    arquivo_notas_entrada = selecionar_arquivo("Selecione o arquivo de Notas de Entrada do Consistem")
-    arquivo_devolucoes = selecionar_arquivo("Selecione o arquivo de Notas de Devolução do Consistem")
-    arquivo_sat = selecionar_arquivo("Selecione o arquivo SAT")
-    arquivo_cte = selecionar_arquivo("Selecione o arquivo de CTEs")
-    arquivo_servico = selecionar_arquivo("Selecione o arquivo de Notas de Serviço")
+
+    layout = LayoutMatriz()
+
+    arquivos = layout.selecionar_arquivos()
+
+    arquivo_anterior = arquivos["arquivo_anterior"]
+    arquivo_notas_entrada = arquivos["arquivo_notas_entrada"]
+    arquivo_devolucoes = arquivos["arquivo_devolucoes"]
+
     #---------------------------------------------------------------------------------------------------
 
     df_notas_erp = concatenar_relatorios_erp(arquivo_notas_entrada,arquivo_devolucoes)
 
-    df_notas_sat = pd.read_excel(arquivo_sat,
-                                    usecols=COLUNAS_IMPORTADAS["sat"],
-                                    dtype={
-                                        "NumeroDocumento" :str,
-                                    "ChaveAcesso" :str
-                                        },
-                                        na_values=valores_vazios)
+    relatorios_externos = layout.carregar_relatorios_externos(arquivos)
 
-    #Tabela de CTES vem em um .xls que na verdade é um html
-    with open(arquivo_cte, "rb") as arquivo:
-        conteudo_bytes = arquivo.read()
-
-    for encoding in ["utf-8", "cp1252", "latin1"]:
-        try:
-            conteudo_html = conteudo_bytes.decode(encoding)
-            break
-        except UnicodeDecodeError:
-            continue
-    lista_tabelas_ctes = pd.read_html(StringIO(conteudo_html), header=0, converters={"CHAVE_DE_ACESSO" :str},flavor="html5lib")
-    df_ctes = lista_tabelas_ctes[0][COLUNAS_IMPORTADAS["cte"]].astype({"CHAVE_DE_ACESSO" :str})
-
-    df_notas_servico = pd.read_excel(arquivo_servico,
-                                    usecols=COLUNAS_IMPORTADAS["servico"],
-                                    dtype={
-                                        "Número" :str,
-                                        "CPF/CNPJ - Prestador" :str,
-                                    })
-
-    #---------------------------------------------------------------------------------------------------
-    #PADRONIZAÇÃO DO NOME DAS COLUNAS
-    #---------------------------------------------------------------------------------------------------
-    
-    df_notas_sat = df_notas_sat.rename(
-        columns={
-            "NumeroDocumento" : "Numero_Documento",
-            #"CnpjOuCpfDoEmitente" : "CNPJ",
-            "ValorTotalNota" : "Valor",
-        }
-    )
-
-    df_ctes = df_ctes.rename(
-        columns={
-            "CHAVE_DE_ACESSO" : "ChaveAcesso",
-            #"CNPJ_EMITENTE" : "CNPJ",
-            "NÚMERO_CTE" : "Numero_Documento",
-            "VALOR_TOTAL_PREST" : "Valor"
-        }
-    )
-
-    df_notas_servico = df_notas_servico.rename(
-        columns={
-            "Número" :"Numero_Documento",
-            "CPF/CNPJ - Prestador" :'CNPJ/CPF',
-            "Valor Serviços" : "Valor",
-            "Prestador - Nome/Razão Social" : "Nome Prestador"
-        }
-    )
-
+    df_notas_sat = relatorios_externos["sat"]
+    df_ctes = relatorios_externos["cte"]
+    df_notas_servico = relatorios_externos["servico"]
 
     #---------------------------------------------------------------------------------------------------
     #FORMATAÇÃO DE COLUNAS
