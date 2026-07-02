@@ -7,6 +7,7 @@ import time
 from tkinter import Tk, filedialog, messagebox
 from io import StringIO
 
+from relatorios_csw import concatenar_relatorios_erp
 from configs import valores_vazios,COLUNAS_IMPORTADAS,COLUNAS_SALVAS,COLUNAS_REPROCESSAMENTO,NOMES_ABAS_NO_EXCEL
 from limpeza import (limpar_cnpj_cpf,limpar_numero_documento,limpar_chave_acesso,limpar_colunas_se_coluna_referencia_nulo,converter_valor_monetario_brasileiro,
     tratar_valor_sem_virgula,converter_data_mista,ordenar_por_data_emissao,limpar_numero_documento_servicos)
@@ -58,28 +59,7 @@ def main():
     arquivo_servico = selecionar_arquivo("Selecione o arquivo de Notas de Serviço")
     #---------------------------------------------------------------------------------------------------
 
-    df_notas_entrada_erp = pd.read_excel(arquivo_notas_entrada,
-                                        usecols=COLUNAS_IMPORTADAS["erp"],
-                                        skipfooter=1,
-                                        dtype={
-                                            "Documento" :str,
-                                            "©CNPJ/CPF/CEI": str,
-                                            "Chave Nf-e" :str
-                                        },
-                                        na_values=valores_vazios)
-
-    df_notas_devolucoes_erp = pd.read_excel(arquivo_devolucoes,
-                                            skipfooter=1,
-                                usecols=COLUNAS_IMPORTADAS["erp"],
-                                dtype={
-                                    "Documento" :str,
-                                    "©CNPJ/CPF/CEI": str,
-                                    "Chave Nf-e" :str
-                                },
-                                na_values=valores_vazios)
-
-    #Concatena as duas listagens do excel que vem do Consistem
-    df_notas_erp = pd.concat([df_notas_entrada_erp,df_notas_devolucoes_erp], ignore_index=True)
+    df_notas_erp = concatenar_relatorios_erp(arquivo_notas_entrada,arquivo_devolucoes)
 
     df_notas_sat = pd.read_excel(arquivo_sat,
                                     usecols=COLUNAS_IMPORTADAS["sat"],
@@ -112,14 +92,7 @@ def main():
     #---------------------------------------------------------------------------------------------------
     #PADRONIZAÇÃO DO NOME DAS COLUNAS
     #---------------------------------------------------------------------------------------------------
-    df_notas_erp = df_notas_erp.rename(
-        columns={
-            "Documento" : "Numero_Documento",
-            "©CNPJ/CPF/CEI" : "CNPJ/CPF",
-            "Fornecedor" : "NomeEmitente",
-            "Chave Nf-e" : "ChaveAcesso"
-        }
-    )
+    
     df_notas_sat = df_notas_sat.rename(
         columns={
             "NumeroDocumento" : "Numero_Documento",
@@ -150,7 +123,6 @@ def main():
     #---------------------------------------------------------------------------------------------------
     #FORMATAÇÃO DE COLUNAS
     #---------------------------------------------------------------------------------------------------
-    df_notas_erp["Valor"] = pd.to_numeric(df_notas_erp["Valor"], errors='coerce')
     df_notas_servico["Valor"] = converter_valor_monetario_brasileiro(df_notas_servico["Valor"])
     df_notas_servico["Valor"] = pd.to_numeric(df_notas_servico["Valor"], errors='coerce')
 
