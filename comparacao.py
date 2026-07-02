@@ -32,7 +32,7 @@ def mapear_coluna_status(dataframe: pd.DataFrame, termo="Lançada") -> pd.DataFr
 })
     return dataframe_atualizado
 
-def analisar_valores_lançados(dataframe: pd.DataFrame ,coluna_valor_doc_conferencia : str,coluna_valor_erp: str) -> pd.DataFrame:
+def analisar_diferenca_entre_valores_lançados(dataframe: pd.DataFrame ,coluna_valor_doc_conferencia : str,coluna_valor_erp: str) -> pd.DataFrame:
     """
     Essa função só pode ser chamada após a execução do merge entre os dois dataframes de interesse
     Analisa os valores dos documentos fazendo uma comparação com os valores lançados no ERP e no documento de conferência.

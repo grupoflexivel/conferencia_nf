@@ -4,9 +4,9 @@ import warnings
 import traceback
 import time
 
-from tkinter import Tk, filedialog, messagebox
-from io import StringIO
+from tkinter import messagebox
 
+from motor import ConferenciaNotaFiscal
 from layouts.matriz import LayoutMatriz
 from relatorios_csw import concatenar_relatorios_erp
 from configs import valores_vazios,COLUNAS_IMPORTADAS,COLUNAS_SALVAS,COLUNAS_REPROCESSAMENTO,NOMES_ABAS_NO_EXCEL
@@ -14,7 +14,7 @@ from limpeza import (limpar_cnpj_cpf,limpar_numero_documento,limpar_chave_acesso
     tratar_valor_sem_virgula,converter_data_mista,ordenar_por_data_emissao,limpar_numero_documento_servicos)
 from excel_utils import formatar_planilha_excel
 from arquivos import adicionar_pendentes_mes_anterior, carregar_notas_pendentes_mes_anterior,selecionar_arquivo
-from comparacao import mapear_coluna_status, analisar_valores_lançados, verificar_cancelamentos, verificar_situacao_notas_canceladas, remover_documentos_duplicados_reprocessamento
+from comparacao import mapear_coluna_status, analisar_diferenca_entre_valores_lançados, verificar_cancelamentos, verificar_situacao_notas_canceladas, remover_documentos_duplicados_reprocessamento
 
 # Silencia os avisos chatos do openpyxl
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
@@ -61,8 +61,6 @@ def main():
     arquivo_notas_entrada = arquivos["arquivo_notas_entrada"]
     arquivo_devolucoes = arquivos["arquivo_devolucoes"]
 
-    #---------------------------------------------------------------------------------------------------
-
     df_notas_erp = concatenar_relatorios_erp(arquivo_notas_entrada,arquivo_devolucoes)
 
     relatorios_externos = layout.carregar_relatorios_externos(arquivos)
@@ -72,29 +70,8 @@ def main():
     df_notas_servico = relatorios_externos["servico"]
 
     #---------------------------------------------------------------------------------------------------
-    #FORMATAÇÃO DE COLUNAS
+    #CRIAÇÃO COLUNA OBSERVAÇÕES
     #---------------------------------------------------------------------------------------------------
-    df_notas_servico["Valor"] = converter_valor_monetario_brasileiro(df_notas_servico["Valor"])
-    df_notas_servico["Valor"] = pd.to_numeric(df_notas_servico["Valor"], errors='coerce')
-
-    dfs = {
-        "df_notas_sat" : df_notas_sat,
-        "df_notas_erp" : df_notas_erp,
-        "df_ctes" : df_ctes,
-        "df_notas_servico" : df_notas_servico
-    }
-
-    mapeamento_limpeza = {
-        "CNPJ/CPF": limpar_cnpj_cpf,
-        "Numero_Documento": limpar_numero_documento,
-        "ChaveAcesso": limpar_chave_acesso
-    }
-
-    for nome, df in dfs.items():
-        # Percorre o mapeamento e só aplica se a coluna existir no df
-        for coluna, funcao_limpeza in mapeamento_limpeza.items():
-            if coluna in df.columns:
-                df[coluna] = df[coluna].apply(funcao_limpeza)
 
     for df in [df_notas_sat, df_ctes, df_notas_servico]:
         if "Observações" not in df.columns:
@@ -110,21 +87,10 @@ def main():
     #---------------------------------------------------------------------------------------------------
     #PROCESSAMENTO ARQUIVO SAT
     #---------------------------------------------------------------------------------------------------
-    comparacao_sat_erp = df_notas_sat.merge(
-        df_notas_erp,
-        on="ChaveAcesso",
-        how="left",
-        suffixes=("", "_CSW"), #Não modifico o nome da primeira coluna
-        indicator=True
-    )
 
-    #Cria a coluna status com base numa lógica pré definida.
-    comparacao_sat_erp = mapear_coluna_status(comparacao_sat_erp)
-    comparacao_sat_erp = analisar_valores_lançados(comparacao_sat_erp,"Valor","Valor_CSW")
-    comparacao_sat_erp = verificar_situacao_notas_canceladas(comparacao_sat_erp,"Situacao","status")
+    conferencia = ConferenciaNotaFiscal()
 
-    #Considera somente as notas que sobraram no CSW para continuar a comparação.
-    df_notas_erp = df_notas_erp[~df_notas_erp['ChaveAcesso'].isin(df_notas_sat['ChaveAcesso'])]
+    comparacao_sat_erp, df_notas_erp = conferencia.comparar_sat_csw(df_notas_sat,df_notas_erp,"ChaveAcesso","Situacao","status")
 
     #---------------------------------------------------------------------------------------------------
     #PROCESSAMENTO ARQUIVO CTE
@@ -139,7 +105,7 @@ def main():
 
     comparacao_cte_erp = mapear_coluna_status(comparacao_cte_erp)
     comparacao_cte_erp["Valor"] = tratar_valor_sem_virgula(comparacao_cte_erp["Valor"], comparacao_cte_erp["Valor_CSW"]) #Específico do arquivo de CTEs
-    comparacao_cte_erp = analisar_valores_lançados(comparacao_cte_erp,"Valor","Valor_CSW")
+    comparacao_cte_erp = analisar_diferenca_entre_valores_lançados(comparacao_cte_erp,"Valor","Valor_CSW")
     comparacao_cte_erp = verificar_situacao_notas_canceladas(comparacao_cte_erp,"SITUACAO","status")
 
     #Considera somente as notas que sobraram no CSW para continuar a comparação.
@@ -160,7 +126,7 @@ def main():
     )
 
     comparacao_notas_servico_erp = mapear_coluna_status(comparacao_notas_servico_erp)
-    comparacao_notas_servico_erp = analisar_valores_lançados(comparacao_notas_servico_erp,"Valor","Valor_CSW")
+    comparacao_notas_servico_erp = analisar_diferenca_entre_valores_lançados(comparacao_notas_servico_erp,"Valor","Valor_CSW")
     df_notas_somente_erp = df_notas_erp[~df_notas_erp["ChaveComparadora"].isin(comparacao_notas_servico_erp["ChaveComparadora"])]
     #-------------------------------------------------------------------------
     #COMPARAÇÃO EXTRA, HOJE FEITO SOMENTE PARA AS NOTAS DE SERVIÇO
@@ -220,7 +186,7 @@ def main():
 
     comparacao_notas_servicos_nao_lancadas = mapear_coluna_status(comparacao_notas_servicos_nao_lancadas)
 
-    comparacao_notas_servicos_nao_lancadas = analisar_valores_lançados(comparacao_notas_servicos_nao_lancadas,"Valor","Valor_CSW")
+    comparacao_notas_servicos_nao_lancadas = analisar_diferenca_entre_valores_lançados(comparacao_notas_servicos_nao_lancadas,"Valor","Valor_CSW")
 
     comparacao_servico_primeira_tentativa = comparacao_notas_servico_erp[
         comparacao_notas_servico_erp["status"] != "Não lançada no CSW"].copy()

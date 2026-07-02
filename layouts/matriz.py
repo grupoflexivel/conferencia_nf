@@ -1,9 +1,11 @@
 import pandas as pd
+from layouts.base import LayoutBase
 from configs import COLUNAS_IMPORTADAS,valores_vazios
 from arquivos import selecionar_arquivo
+from limpeza import converter_valor_monetario_brasileiro,limpar_cnpj_cpf,limpar_numero_documento,limpar_chave_acesso,limpar_numero_documento_servicos
 from io import StringIO
 
-class LayoutMatriz:
+class LayoutMatriz(LayoutBase):
     nome = "Matriz"
 
     def selecionar_arquivos(self):
@@ -83,8 +85,12 @@ class LayoutMatriz:
             "CPF/CNPJ - Prestador" :'CNPJ/CPF',
             "Valor Serviços" : "Valor",
             "Prestador - Nome/Razão Social" : "Nome Prestador"
-        }
-    )
+            }
+        )
+        
+        df_notas_servico["Valor"] = converter_valor_monetario_brasileiro(df_notas_servico["Valor"])
+        df_notas_servico["Valor"] = pd.to_numeric(df_notas_servico["Valor"], errors='coerce')
+
         
         return df_notas_servico
 
@@ -93,12 +99,19 @@ class LayoutMatriz:
         df_ctes = self.carregar_relatorio_cte_matriz(arquivos["arquivo_cte"])
         df_notas_servico = self.carregar_relatorio_servico_matriz(arquivos["arquivo_servico"])
 
+        df_notas_sat = self.aplicar_limpeza_dados(df_notas_sat)
+        df_ctes = self.aplicar_limpeza_dados(df_ctes)
+        df_notas_servico = self.aplicar_limpeza_dados(df_notas_servico)
+
         return {
             "sat": df_notas_sat,
             "cte": df_ctes,
             "servico": df_notas_servico
         }
-
-
     
+    def aplicar_limpeza_dados(self,dataframe: pd.DataFrame) -> pd.DataFrame:
 
+        dataframe = dataframe.copy()
+        dataframe = super().aplicar_limpeza_dados(dataframe)
+
+        return dataframe
