@@ -112,8 +112,8 @@ def verificar_situacao_notas_canceladas(dataframe: pd.DataFrame, coluna_situacao
     
     dataframe_copia = dataframe.copy()
 
-    condicao_cancelado = dataframe_copia[coluna_situacao].str.contains(
-        "cancelad[oa]", case=False, na=False
+    condicao_cancelado = dataframe_copia[coluna_situacao].astype("string").str.contains(
+        r"cancelad[oa]s?", case=False, na=False
     )
 
     condicao_lancado = dataframe_copia[coluna_status] == "Lançada no CSW"

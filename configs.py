@@ -6,7 +6,9 @@ COLUNAS_IMPORTADAS = {
     "sat": ["NumeroDocumento","Situacao","ValorTotalNota","NomeEmitente","ChaveAcesso", "DataEmissao"],
     "erp": ["Documento","Valor","Chave Nf-e","Cód. Par", "Parâmetro","©CNPJ/CPF/CEI", "Data Emissão"],
     "cte": ["NÚMERO_CTE","SITUACAO","VALOR_TOTAL_PREST","NOME_EMITENTE","CHAVE_DE_ACESSO", "DATA_EMISSÃO"],
-    "servico": ["Número","Data de Cancelamento","CPF/CNPJ - Prestador","Valor Serviços","Prestador - Nome/Razão Social", "Data de Emissão"]
+    "servico": ["Número","Data de Cancelamento","CPF/CNPJ - Prestador","Valor Serviços","Prestador - Nome/Razão Social", "Data de Emissão"],
+    "qive-filial": ["Número","Status","Valor Total da Nota","Nome PJ Emitente","Chave de Acesso", "Data Emissão"],
+
 }
 
 COLUNAS_SALVAS = {
@@ -16,7 +18,9 @@ COLUNAS_SALVAS = {
             "Cód. Par","Parâmetro"],
 
     "servico": ["Observações","status","Numero_Documento","Numero_Documento_Original","Nome_Emitente","CNPJ/CPF","Data_Emissao","Valor","Situacao","Alerta Comparador","ChaveAcesso","Numero_Documento_CSW","Valor_CSW","CNPJ/CPF_CSW",
-            "Cód. Par","Parâmetro"]
+            "Cód. Par","Parâmetro"],
+    
+    "qive-filial": ["Observações","status","Numero_Documento","Nome_Emitente","CNPJ/CPF","Data_Emissao","Valor","Situacao","Alerta Comparador","ChaveAcesso","Numero_Documento_CSW","Valor_CSW","Cód. Par","Parâmetro"]
 }
 
 COLUNAS_REPROCESSAMENTO = {
@@ -24,7 +28,9 @@ COLUNAS_REPROCESSAMENTO = {
 
     "cte": ["Numero_Documento","Situacao","Valor","Nome_Emitente","ChaveAcesso","Data_Emissao","status","Alerta Comparador","Observações"],
 
-    "servico": ["Numero_Documento","Situacao","CNPJ/CPF","Nome_Emitente","Valor","ChaveAcesso","Data_Emissao","status","Alerta Comparador","Observações"]
+    "servico": ["Numero_Documento","Situacao","CNPJ/CPF","Nome_Emitente","Valor","ChaveAcesso","Data_Emissao","status","Alerta Comparador","Observações"],
+
+    "qive-filial": ["Situacao","ChaveAcesso","Nome_Emitente","Numero_Documento","Valor","Data_Emissao","status","Alerta Comparador","Observações"]
 
 }
 

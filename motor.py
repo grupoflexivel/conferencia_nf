@@ -59,8 +59,21 @@ class ConferenciaNotaFiscal:
         notas_restantes_csw = dataframe_csw[~dataframe_csw[coluna_base_comparacao].isin(dataframe[coluna_base_comparacao])]
 
         return notas_restantes_csw
+
+    def formatar_e_limpar_colunas_para_exportar(self, dataframe: pd.DataFrame):
     
-    def comparar_sat_csw(self, dataframe:pd.DataFrame,dataframe_csw: pd.DataFrame,coluna_base_comparacao: str
+        dataframe = dataframe.copy()
+
+        colunas_para_limpar_dados = ['Numero_Documento_CSW','Valor_CSW','Cód. Par', 'Parâmetro', 'CNPJ/CPF_CSW']
+        dataframe = limpar_colunas_se_coluna_referencia_nulo(dataframe, "Alerta Comparador", *colunas_para_limpar_dados)
+        dataframe = ordenar_por_data_emissao(dataframe,"Data_Emissao")
+        
+        if "Observações" not in dataframe.columns:
+            dataframe["Observações"] = np.nan
+
+        return dataframe 
+
+    def comparar_sat_ou_qive_csw(self, dataframe:pd.DataFrame,dataframe_csw: pd.DataFrame,coluna_base_comparacao: str
                          ,coluna_situacao: str) -> tuple[pd.DataFrame]:
 
         comparativo = self.realizar_merge(dataframe,dataframe_csw,coluna_base_comparacao)
@@ -71,7 +84,7 @@ class ConferenciaNotaFiscal:
         
         return comparativo, notas_restantes_csw
     
-    def comparar_cte_csw(self, dataframe:pd.DataFrame, dataframe_csw: pd.DataFrame, coluna_base_comparacao: str,
+    def comparar_cte_matriz_csw(self, dataframe:pd.DataFrame, dataframe_csw: pd.DataFrame, coluna_base_comparacao: str,
                          coluna_situacao: str) -> tuple[pd.DataFrame]:
 
         comparativo = self.realizar_merge(dataframe, dataframe_csw, coluna_base_comparacao)
@@ -82,7 +95,7 @@ class ConferenciaNotaFiscal:
 
         return comparativo, notas_restantes_csw
     
-    def comparar_servicos_csw(self, dataframe:pd.DataFrame, dataframe_csw: pd.DataFrame, coluna_base_comparacao: str,
+    def comparar_servicos_matriz_csw(self, dataframe:pd.DataFrame, dataframe_csw: pd.DataFrame, coluna_base_comparacao: str,
                          coluna_situacao: str) -> tuple[pd.DataFrame]:
         
         dataframe = dataframe.copy()
@@ -97,21 +110,4 @@ class ConferenciaNotaFiscal:
 
         return comparativo, notas_restantes_csw
 
-    def formatar_e_limpar_colunas_para_exportar(self, dataframe: pd.DataFrame):
         
-        dataframe = dataframe.copy()
-
-        colunas_para_limpar_dados = ['Numero_Documento_CSW','Valor_CSW','Cód. Par', 'Parâmetro', 'CNPJ/CPF_CSW']
-        dataframe = limpar_colunas_se_coluna_referencia_nulo(dataframe, "Alerta Comparador", *colunas_para_limpar_dados)
-        dataframe = ordenar_por_data_emissao(dataframe,"Data_Emissao")
-        
-        if "Observações" not in dataframe.columns:
-            dataframe["Observações"] = np.nan
-
-        return dataframe
-        
-
-        
-
-
-    
