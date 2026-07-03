@@ -38,8 +38,9 @@ class LayoutMatriz(LayoutBase):
         df_notas_sat = df_notas_sat.rename(
         columns={
             "NumeroDocumento" : "Numero_Documento",
-            #"CnpjOuCpfDoEmitente" : "CNPJ",
             "ValorTotalNota" : "Valor",
+            "NomeEmitente" : "Nome_Emitente",
+            "DataEmissao" : "Data_Emissao"
             }
         )    
         return df_notas_sat
@@ -62,9 +63,11 @@ class LayoutMatriz(LayoutBase):
         df_ctes = df_ctes.rename(
         columns={
             "CHAVE_DE_ACESSO" : "ChaveAcesso",
-            #"CNPJ_EMITENTE" : "CNPJ",
             "NÚMERO_CTE" : "Numero_Documento",
-            "VALOR_TOTAL_PREST" : "Valor"
+            "VALOR_TOTAL_PREST" : "Valor",
+            "NOME_EMITENTE" : "Nome_Emitente",
+            "SITUACAO" : "Situacao",
+            "DATA_EMISSÃO" : "Data_Emissao"
             }
         )
 
@@ -84,7 +87,8 @@ class LayoutMatriz(LayoutBase):
             "Número" :"Numero_Documento",
             "CPF/CNPJ - Prestador" :'CNPJ/CPF',
             "Valor Serviços" : "Valor",
-            "Prestador - Nome/Razão Social" : "Nome Prestador"
+            "Prestador - Nome/Razão Social" : "Nome_Emitente",
+            "Data de Emissão" : "Data_Emissao"
             }
         )
         

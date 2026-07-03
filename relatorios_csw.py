@@ -1,5 +1,6 @@
 import pandas as pd
 from configs import COLUNAS_IMPORTADAS,valores_vazios
+from limpeza import limpar_chave_acesso,limpar_cnpj_cpf,limpar_numero_documento
 
 def carregar_relatorio_csw(arquivo: str) -> pd.DataFrame:
     return pd.read_excel(arquivo,
@@ -23,6 +24,12 @@ def padronizar_colunas_csw(dataframe: pd.DataFrame) -> pd.DataFrame:
         }
     )
 
+    dataframe["Numero_Documento"] = dataframe["Numero_Documento"].apply(limpar_numero_documento)
+
+    dataframe["ChaveAcesso"] = dataframe["ChaveAcesso"].apply(limpar_chave_acesso)
+
+    dataframe["CNPJ/CPF"] = dataframe["CNPJ/CPF"].apply(limpar_cnpj_cpf)
+    
     dataframe["Valor"] = pd.to_numeric(
         dataframe["Valor"],
         errors="coerce"

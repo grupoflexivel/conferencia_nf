@@ -10,21 +10,21 @@ COLUNAS_IMPORTADAS = {
 }
 
 COLUNAS_SALVAS = {
-    "sat": ["Observações","status","Numero_Documento","ChaveAcesso","NomeEmitente","DataEmissao","Valor","Situacao","Alerta Comparador", "Numero_Documento_CSW","Valor_CSW","Cód. Par","Parâmetro"],
+    "sat": ["Observações","status","Numero_Documento","ChaveAcesso","Nome_Emitente","Data_Emissao","Valor","Situacao","Alerta Comparador", "Numero_Documento_CSW","Valor_CSW","Cód. Par","Parâmetro"],
 
-    "cte": ["Observações","status","Numero_Documento","ChaveAcesso","NOME_EMITENTE","DATA_EMISSÃO","Valor","SITUACAO","Alerta Comparador","Numero_Documento_CSW","Valor_CSW",
+    "cte": ["Observações","status","Numero_Documento","ChaveAcesso","Nome_Emitente","Data_Emissao","Valor","Situacao","Alerta Comparador","Numero_Documento_CSW","Valor_CSW",
             "Cód. Par","Parâmetro"],
 
-    "servico": ["Observações","status","Numero_Documento","Numero_Documento_Original","Nome Prestador","CNPJ/CPF","Data de Emissão","Valor","Situação","Alerta Comparador","ChaveAcesso","Numero_Documento_CSW","Valor_CSW","CNPJ/CPF_CSW",
+    "servico": ["Observações","status","Numero_Documento","Numero_Documento_Original","Nome_Emitente","CNPJ/CPF","Data_Emissao","Valor","Situacao","Alerta Comparador","ChaveAcesso","Numero_Documento_CSW","Valor_CSW","CNPJ/CPF_CSW",
             "Cód. Par","Parâmetro"]
 }
 
 COLUNAS_REPROCESSAMENTO = {
-    "sat": ["Situacao","ChaveAcesso","NomeEmitente","Numero_Documento","Valor","DataEmissao","status","Alerta Comparador","Observações" ],
+    "sat": ["Situacao","ChaveAcesso","Nome_Emitente","Numero_Documento","Valor","Data_Emissao","status","Alerta Comparador","Observações" ],
 
-    "cte": ["Numero_Documento","SITUACAO","Valor","NOME_EMITENTE","ChaveAcesso","DATA_EMISSÃO","status","Alerta Comparador","Observações"],
+    "cte": ["Numero_Documento","Situacao","Valor","Nome_Emitente","ChaveAcesso","Data_Emissao","status","Alerta Comparador","Observações"],
 
-    "servico": ["Numero_Documento","Situação","CNPJ/CPF","Nome Prestador","Valor","ChaveAcesso","Data de Emissão","status","Alerta Comparador","Observações"]
+    "servico": ["Numero_Documento","Situacao","CNPJ/CPF","Nome_Emitente","Valor","ChaveAcesso","Data_Emissao","status","Alerta Comparador","Observações"]
 
 }
 

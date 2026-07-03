@@ -1,6 +1,7 @@
 import pandas as pd
-from comparacao import mapear_coluna_status,analisar_diferenca_entre_valores_lançados,verificar_situacao_notas_canceladas
-from limpeza import tratar_valor_sem_virgula
+import numpy as np
+from comparacao import mapear_coluna_status,analisar_diferenca_entre_valores_lançados,verificar_situacao_notas_canceladas,verificar_cancelamentos
+from limpeza import tratar_valor_sem_virgula, limpar_numero_documento_servicos,limpar_colunas_se_coluna_referencia_nulo,ordenar_por_data_emissao
 
 class ConferenciaNotaFiscal:
 
@@ -26,12 +27,26 @@ class ConferenciaNotaFiscal:
             )
         return merge_dataframes
     
-    def realizar_analises_colunas(self, dataframe: pd.DataFrame,coluna_situacao: str, coluna_status: str):
+    def realizar_analises_colunas(self, dataframe: pd.DataFrame,coluna_situacao: str,
+                                 tratar_valores_sem_virgula: bool = False, verificar_cancelamentos_notas_servico : bool = False) -> pd.DataFrame:
         
         dataframe = dataframe.copy()
 
         dataframe = mapear_coluna_status(dataframe)
+
+        if tratar_valores_sem_virgula:
+
+            dataframe[self.coluna_valor_doc_referencia] = tratar_valor_sem_virgula(
+                dataframe[self.coluna_valor_doc_referencia],
+                dataframe[self.coluna_valor_erp]
+            )
+
         dataframe = analisar_diferenca_entre_valores_lançados(dataframe, self.coluna_valor_doc_referencia, self.coluna_valor_erp)
+
+        if verificar_cancelamentos_notas_servico:
+
+            dataframe = verificar_cancelamentos(dataframe,"Data de Cancelamento","Situacao")
+
         dataframe = verificar_situacao_notas_canceladas(dataframe, coluna_situacao, self.coluna_status )
 
         return dataframe
@@ -44,53 +59,59 @@ class ConferenciaNotaFiscal:
         notas_restantes_csw = dataframe_csw[~dataframe_csw[coluna_base_comparacao].isin(dataframe[coluna_base_comparacao])]
 
         return notas_restantes_csw
-
-
+    
     def comparar_sat_csw(self, dataframe:pd.DataFrame,dataframe_csw: pd.DataFrame,coluna_base_comparacao: str
-                         ,coluna_situacao: str, coluna_status: str) -> pd.DataFrame:
+                         ,coluna_situacao: str) -> tuple[pd.DataFrame]:
 
         comparativo = self.realizar_merge(dataframe,dataframe_csw,coluna_base_comparacao)
 
-        comparativo = self.realizar_analises_colunas(comparativo,coluna_situacao,coluna_status)
+        comparativo = self.realizar_analises_colunas(comparativo,coluna_situacao)
         
         notas_restantes_csw = self.remover_notas_ja_lancadas(dataframe,dataframe_csw,coluna_base_comparacao)
         
         return comparativo, notas_restantes_csw
+    
+    def comparar_cte_csw(self, dataframe:pd.DataFrame, dataframe_csw: pd.DataFrame, coluna_base_comparacao: str,
+                         coluna_situacao: str) -> tuple[pd.DataFrame]:
 
+        comparativo = self.realizar_merge(dataframe, dataframe_csw, coluna_base_comparacao)
 
-    # def comparar_cte_csw(self, dataframe:pd.DataFrame,dataframe_csw: pd.DataFrame,coluna_base_comparacao:str) -> pd.DataFrame:
-    #     comparacao_cte_csw = df_ctes.merge(
-    #         notas_restantes_erp,
-    #         on="ChaveAcesso",
-    #         how="left",
-    #         suffixes=("","_CSW"), #Não modifico o nome da primeira coluna
-    #         indicator=True
-    #     )
+        comparativo = self.realizar_analises_colunas(comparativo,coluna_situacao,tratar_valores_sem_virgula=True)
 
-    #     comparacao_cte_csw = mapear_coluna_status(comparacao_cte_csw)
-    #     comparacao_cte_csw["Valor"] = tratar_valor_sem_virgula(comparacao_cte_csw["Valor"], comparacao_cte_csw["Valor_CSW"]) #Específico do arquivo de CTEs
-    #     comparacao_cte_csw = analisar_valores_lançados(comparacao_cte_csw,"Valor","Valor_CSW")
-    #     comparacao_cte_csw = verificar_situacao_notas_canceladas(comparacao_cte_csw,"SITUACAO","status")
+        notas_restantes_csw = self.remover_notas_ja_lancadas(dataframe,dataframe_csw,coluna_base_comparacao)
 
-    #     #Considera somente as notas que sobraram no CSW para continuar a comparação.
-    #     notas_restantes_erp = notas_restantes_erp[~notas_restantes_erp["ChaveAcesso"].isin(comparacao_cte_csw["ChaveAcesso"])]
-
-    #     #---------------------------------------------------------------------------------------------------
-    #     #PROCESSAMENTO ARQUIVO NOTAS DE SERVIÇO
-    #     #---------------------------------------------------------------------------------------------------
-    #     notas_restantes_erp["ChaveComparadora"] = notas_restantes_erp["Numero_Documento"] + "-" + notas_restantes_erp["CNPJ/CPF"]
-    #     df_notas_servico["ChaveComparadora"] = df_notas_servico["Numero_Documento"] + "-" + df_notas_servico["CNPJ/CPF"]
-
-    #     comparacao_notas_servico_csw = df_notas_servico.merge(
-    #         notas_restantes_erp,
-    #         on="ChaveComparadora",
-    #         how="left",
-    #         suffixes=("","_CSW"), #Não modifico o nome da primeira coluna
-    #         indicator=True
-    #     )
-
-    #     comparacao_notas_servico_csw = mapear_coluna_status(comparacao_notas_servico_csw)
-    #     comparacao_notas_servico_csw = analisar_valores_lançados(comparacao_notas_servico_csw,"Valor","Valor_CSW")
-    #     df_notas_somente_csw = notas_restantes_erp[~notas_restantes_erp["ChaveComparadora"].isin(comparacao_notas_servico_csw["ChaveComparadora"])]
+        return comparativo, notas_restantes_csw
+    
+    def comparar_servicos_csw(self, dataframe:pd.DataFrame, dataframe_csw: pd.DataFrame, coluna_base_comparacao: str,
+                         coluna_situacao: str) -> tuple[pd.DataFrame]:
         
+        dataframe = dataframe.copy()
+        dataframe["Numero_Documento_Original"] = dataframe["Numero_Documento"]
+        dataframe["Numero_Documento"] = dataframe["Numero_Documento"].apply(limpar_numero_documento_servicos)
+
+        comparativo = self.realizar_merge(dataframe, dataframe_csw, coluna_base_comparacao)
+
+        comparativo = self.realizar_analises_colunas(comparativo,coluna_situacao,verificar_cancelamentos_notas_servico=True)
+
+        notas_restantes_csw = self.remover_notas_ja_lancadas(dataframe,dataframe_csw,coluna_base_comparacao)
+
+        return comparativo, notas_restantes_csw
+
+    def formatar_e_limpar_colunas_para_exportar(self, dataframe: pd.DataFrame):
         
+        dataframe = dataframe.copy()
+
+        colunas_para_limpar_dados = ['Numero_Documento_CSW','Valor_CSW','Cód. Par', 'Parâmetro', 'CNPJ/CPF_CSW']
+        dataframe = limpar_colunas_se_coluna_referencia_nulo(dataframe, "Alerta Comparador", *colunas_para_limpar_dados)
+        dataframe = ordenar_por_data_emissao(dataframe,"Data_Emissao")
+        
+        if "Observações" not in dataframe.columns:
+            dataframe["Observações"] = np.nan
+
+        return dataframe
+        
+
+        
+
+
+    

@@ -9,12 +9,10 @@ from tkinter import messagebox
 from motor import ConferenciaNotaFiscal
 from layouts.matriz import LayoutMatriz
 from relatorios_csw import concatenar_relatorios_erp
-from configs import valores_vazios,COLUNAS_IMPORTADAS,COLUNAS_SALVAS,COLUNAS_REPROCESSAMENTO,NOMES_ABAS_NO_EXCEL
-from limpeza import (limpar_cnpj_cpf,limpar_numero_documento,limpar_chave_acesso,limpar_colunas_se_coluna_referencia_nulo,converter_valor_monetario_brasileiro,
-    tratar_valor_sem_virgula,converter_data_mista,ordenar_por_data_emissao,limpar_numero_documento_servicos)
+from configs import COLUNAS_SALVAS
 from excel_utils import formatar_planilha_excel
-from arquivos import adicionar_pendentes_mes_anterior, carregar_notas_pendentes_mes_anterior,selecionar_arquivo
-from comparacao import mapear_coluna_status, analisar_diferenca_entre_valores_lançados, verificar_cancelamentos, verificar_situacao_notas_canceladas, remover_documentos_duplicados_reprocessamento
+from arquivos import adicionar_pendentes_mes_anterior
+
 
 # Silencia os avisos chatos do openpyxl
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
@@ -84,164 +82,52 @@ def main():
         df_ctes = adicionar_pendentes_mes_anterior(df_ctes,arquivo_anterior,"cte")
         df_notas_servico = adicionar_pendentes_mes_anterior(df_notas_servico,arquivo_anterior,"servico")
 
+    conferencia = ConferenciaNotaFiscal()
+
     #---------------------------------------------------------------------------------------------------
     #PROCESSAMENTO ARQUIVO SAT
     #---------------------------------------------------------------------------------------------------
-
-    conferencia = ConferenciaNotaFiscal()
-
-    comparacao_sat_erp, df_notas_erp = conferencia.comparar_sat_csw(df_notas_sat,df_notas_erp,"ChaveAcesso","Situacao","status")
+    comparacao_sat_erp, df_notas_erp = conferencia.comparar_sat_csw(df_notas_sat,df_notas_erp,"ChaveAcesso","Situacao")
 
     #---------------------------------------------------------------------------------------------------
     #PROCESSAMENTO ARQUIVO CTE
     #---------------------------------------------------------------------------------------------------
-    comparacao_cte_erp = df_ctes.merge(
-        df_notas_erp,
-        on="ChaveAcesso",
-        how="left",
-        suffixes=("","_CSW"), #Não modifico o nome da primeira coluna
-        indicator=True
-    )
-
-    comparacao_cte_erp = mapear_coluna_status(comparacao_cte_erp)
-    comparacao_cte_erp["Valor"] = tratar_valor_sem_virgula(comparacao_cte_erp["Valor"], comparacao_cte_erp["Valor_CSW"]) #Específico do arquivo de CTEs
-    comparacao_cte_erp = analisar_diferenca_entre_valores_lançados(comparacao_cte_erp,"Valor","Valor_CSW")
-    comparacao_cte_erp = verificar_situacao_notas_canceladas(comparacao_cte_erp,"SITUACAO","status")
-
-    #Considera somente as notas que sobraram no CSW para continuar a comparação.
-    df_notas_erp = df_notas_erp[~df_notas_erp["ChaveAcesso"].isin(comparacao_cte_erp["ChaveAcesso"])]
-
+    comparacao_cte_erp, df_notas_erp = conferencia.comparar_cte_csw(df_ctes, df_notas_erp, "ChaveAcesso", "Situacao" )
     #---------------------------------------------------------------------------------------------------
     #PROCESSAMENTO ARQUIVO NOTAS DE SERVIÇO
     #---------------------------------------------------------------------------------------------------
     df_notas_erp["ChaveComparadora"] = df_notas_erp["Numero_Documento"] + "-" + df_notas_erp["CNPJ/CPF"]
     df_notas_servico["ChaveComparadora"] = df_notas_servico["Numero_Documento"] + "-" + df_notas_servico["CNPJ/CPF"]
 
-    comparacao_notas_servico_erp = df_notas_servico.merge(
-        df_notas_erp,
-        on="ChaveComparadora",
-        how="left",
-        suffixes=("","_CSW"), #Não modifico o nome da primeira coluna
-        indicator=True
-    )
-
-    comparacao_notas_servico_erp = mapear_coluna_status(comparacao_notas_servico_erp)
-    comparacao_notas_servico_erp = analisar_diferenca_entre_valores_lançados(comparacao_notas_servico_erp,"Valor","Valor_CSW")
-    df_notas_somente_erp = df_notas_erp[~df_notas_erp["ChaveComparadora"].isin(comparacao_notas_servico_erp["ChaveComparadora"])]
-    #-------------------------------------------------------------------------
-    #COMPARAÇÃO EXTRA, HOJE FEITO SOMENTE PARA AS NOTAS DE SERVIÇO
-    """Essa comparação somente ocorre pois lançam as NFs de Serviço com número de documento diferente do que sai no relatório
-    Exemplo: 20260000000005574 lançada como 5574. Como não colocam também a Chave de Acesso acabamos ficando sem ChaveComparadora."""
-    #-------------------------------------------------------------------------
-
-    notas_servicos_nao_lancadas = comparacao_notas_servico_erp[
-        comparacao_notas_servico_erp["status"] == "Não lançada no CSW"
-    ].copy()
-
-    notas_servicos_nao_lancadas = notas_servicos_nao_lancadas.drop(
-        columns=["_merge"],
-        errors="ignore"
-    )
-
-    notas_servicos_nao_lancadas["Numero_Documento_Original"] = (
-        notas_servicos_nao_lancadas["Numero_Documento"]
-    )
-
-    notas_servicos_nao_lancadas["Numero_Documento"] = (
-        notas_servicos_nao_lancadas["Numero_Documento"]
-        .apply(limpar_numero_documento_servicos)
-    )
-
-    notas_servicos_nao_lancadas["ChaveComparadora"] = (
-        notas_servicos_nao_lancadas["Numero_Documento"]
-        + "-"
-        + notas_servicos_nao_lancadas["CNPJ/CPF"]
-    )
-
-    notas_servicos_nao_lancadas = notas_servicos_nao_lancadas.drop(
-        columns=[
-            "Numero_Documento_CSW",
-            "Valor_CSW",
-            "Cód. Par",
-            "Parâmetro",
-            "CNPJ/CPF_CSW",
-            "ChaveAcesso_CSW",
-            "Data Emissão"
-        ],
-        errors="ignore"
-    )
-
-    comparacao_notas_servicos_nao_lancadas = notas_servicos_nao_lancadas.merge(
-        df_notas_somente_erp,
-        on="ChaveComparadora",
-        how="left",
-        suffixes=("", "_CSW"),
-        indicator=True
-    )
-
-    comparacao_notas_servicos_nao_lancadas = comparacao_notas_servicos_nao_lancadas.drop(
-        columns=["status", "Alerta Comparador"],
-        errors="ignore"
-    )
-
-    comparacao_notas_servicos_nao_lancadas = mapear_coluna_status(comparacao_notas_servicos_nao_lancadas)
-
-    comparacao_notas_servicos_nao_lancadas = analisar_diferenca_entre_valores_lançados(comparacao_notas_servicos_nao_lancadas,"Valor","Valor_CSW")
-
-    comparacao_servico_primeira_tentativa = comparacao_notas_servico_erp[
-        comparacao_notas_servico_erp["status"] != "Não lançada no CSW"].copy()
-
-    comparacao_notas_servico_erp = pd.concat([comparacao_servico_primeira_tentativa,comparacao_notas_servicos_nao_lancadas],ignore_index=True)
-
-    comparacao_notas_servico_erp = verificar_cancelamentos(comparacao_notas_servico_erp, "Data de Cancelamento","Situação")
-
-    comparacao_notas_servico_erp = verificar_situacao_notas_canceladas(comparacao_notas_servico_erp,"Situação","status")
-
-    df_notas_somente_erp = df_notas_erp[~df_notas_erp["ChaveComparadora"].isin(comparacao_notas_servico_erp["ChaveComparadora"])]
-
-    #-------------------------------------------------------------------------
-    #------------COMPARAÇÃO EXTRA FINALIZADA
-    #-------------------------------------------------------------------------
+    comparacao_notas_servico_erp, df_notas_somente_erp=conferencia.comparar_servicos_csw(df_notas_servico, df_notas_erp, "ChaveComparadora", "Situacao")
 
     #---------------------------------------------------------------------------------------------------
     #TRATAMENTO DE DADOS PARA EXPORTAR EM .XLSX
     #---------------------------------------------------------------------------------------------------
-    colunas_para_limpar = ['Numero_Documento_CSW','Valor_CSW','Cód. Par', 'Parâmetro', 'CNPJ/CPF_CSW']
 
-    dataframes = [
-        comparacao_sat_erp,
-        comparacao_cte_erp,
-        comparacao_notas_servico_erp
-        ]
+    comparacao_cte_erp = conferencia.formatar_e_limpar_colunas_para_exportar(comparacao_cte_erp)
+    comparacao_notas_servico_erp = conferencia.formatar_e_limpar_colunas_para_exportar(comparacao_notas_servico_erp)
+    comparacao_sat_erp = conferencia.formatar_e_limpar_colunas_para_exportar(comparacao_sat_erp)
 
-    dataframes_limpos =[
-        limpar_colunas_se_coluna_referencia_nulo(df, "Alerta Comparador", *colunas_para_limpar)
-        for df in dataframes
-    ]
-
-    comparacao_sat_erp, comparacao_cte_erp, comparacao_notas_servico_erp = dataframes_limpos
-
-    comparacao_sat_erp = ordenar_por_data_emissao(comparacao_sat_erp,"DataEmissao")
-
-    comparacao_cte_erp = ordenar_por_data_emissao(comparacao_cte_erp,"DATA_EMISSÃO")
-
-    comparacao_notas_servico_erp = ordenar_por_data_emissao(comparacao_notas_servico_erp,"Data de Emissão")
-
-    dataframes_relatorio = [
-        comparacao_sat_erp,
-        comparacao_cte_erp,
-        comparacao_notas_servico_erp
-    ]
-    for df in dataframes_relatorio:
-        df.drop(columns=["_merge"], errors="ignore", inplace=True)
-
-        if "Observações" not in df.columns:
-            df["Observações"] = np.nan
-
-    df_notas_somente_erp = df_notas_somente_erp.drop(columns=["ChaveComparadora"],errors="ignore")
     #---------------------------------------------------------------------------------------------------
     #EXPORTAÇÃO DOS DADOS PARA .XLSX
     #---------------------------------------------------------------------------------------------------
+
+    def validar_colunas_exportacao(dataframe, colunas_esperadas, nome_relatorio):
+        colunas_faltando = [
+            coluna for coluna in colunas_esperadas
+            if coluna not in dataframe.columns
+        ]
+
+        if colunas_faltando:
+            raise ValueError(
+                f"As seguintes colunas estão faltando no relatório {nome_relatorio}: "
+                f"{colunas_faltando}"
+            )
+        
+    validar_colunas_exportacao(comparacao_notas_servico_erp,COLUNAS_SALVAS["servico"],"Serviço vs CSW")
+
+    
     with pd.ExcelWriter("comparacao_notas.xlsx", engine="xlsxwriter") as writer:
         comparacao_sat_erp.to_excel(writer,
                             columns=COLUNAS_SALVAS["sat"],
