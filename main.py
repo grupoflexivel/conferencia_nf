@@ -73,6 +73,7 @@ def main():
         df_notas_servico = relatorios_externos["servico"]
 
     if empresa_escolhida == "Filial":
+
         layout = LayoutFilialMG()
 
         arquivos = layout.selecionar_arquivos()
@@ -86,37 +87,44 @@ def main():
         relatorios_externos = layout.carregar_relatorios_externos_filial(arquivos)
 
         df_qive_filial = relatorios_externos["qive-filial"]
-
-        conferencia = ConferenciaNotaFiscal()
-
-        comparacao_qive_erp, df_notas_somente_erp = conferencia.comparar_sat_ou_qive_csw(df_qive_filial,df_notas_erp,"ChaveAcesso","Situacao")
+        df_cte_filial = relatorios_externos["cte-filial"]
+        df_servicos_filial = relatorios_externos["servico"]
 
     #UTILIZADO QUANDO FICARAM NOTAS PENDENTES DO MÊS ANTERIOR
     if arquivo_anterior:
 
-        df_notas_sat = adicionar_pendentes_mes_anterior(df_notas_sat,arquivo_anterior,"sat")
-        df_ctes = adicionar_pendentes_mes_anterior(df_ctes,arquivo_anterior,"cte")
-        df_notas_servico = adicionar_pendentes_mes_anterior(df_notas_servico,arquivo_anterior,"servico")
+        if empresa_escolhida == "Matriz":
+
+            df_notas_sat = adicionar_pendentes_mes_anterior(df_notas_sat,arquivo_anterior,"sat")
+            df_ctes = adicionar_pendentes_mes_anterior(df_ctes,arquivo_anterior,"cte")
+            df_notas_servico = adicionar_pendentes_mes_anterior(df_notas_servico,arquivo_anterior,"servico")
+        
+        if empresa_escolhida == "Filial":
+            
+            df_qive_filial = adicionar_pendentes_mes_anterior(df_qive_filial, arquivo_anterior, "qive-filial")
+            df_cte_filial = adicionar_pendentes_mes_anterior(df_cte_filial,arquivo_anterior, "cte-filial")
+            df_servicos_filial = adicionar_pendentes_mes_anterior(df_servicos_filial,arquivo_anterior, "servico")
+
+    #---------------------------------------------------------------------------------------------------------
+    #PROCESSAMENTO
+    #---------------------------------------------------------------------------------------------------------
+
+    if empresa_escolhida == "Filial":
+        conferencia = ConferenciaNotaFiscal()
+
+        comparacao_qive_erp, df_erp = conferencia.comparar_sat_ou_qive_csw(df_qive_filial,df_notas_erp,"ChaveAcesso","Situacao")
+        comparacao_cte_erp, df_notas_erp = conferencia.comparar_sat_ou_qive_csw(df_cte_filial,df_erp,"ChaveAcesso","Situacao")
+    
+        comparacao_notas_servico_erp, df_notas_somente_erp=conferencia.comparar_servicos_csw(df_servicos_filial, df_notas_erp,"Situacao")
 
     if empresa_escolhida == "Matriz":
 
         conferencia = ConferenciaNotaFiscal()
-        #---------------------------------------------------------------------------------------------------
-        #PROCESSAMENTO ARQUIVO SAT
-        #---------------------------------------------------------------------------------------------------
+
         comparacao_sat_erp, df_notas_erp = conferencia.comparar_sat_ou_qive_csw(df_notas_sat,df_notas_erp,"ChaveAcesso","Situacao")
-
-        #---------------------------------------------------------------------------------------------------
-        #PROCESSAMENTO ARQUIVO CTE
-        #---------------------------------------------------------------------------------------------------
         comparacao_cte_erp, df_notas_erp = conferencia.comparar_cte_matriz_csw(df_ctes, df_notas_erp, "ChaveAcesso", "Situacao" )
-        #---------------------------------------------------------------------------------------------------
-        #PROCESSAMENTO ARQUIVO NOTAS DE SERVIÇO
-        #---------------------------------------------------------------------------------------------------
-        df_notas_erp["ChaveComparadora"] = df_notas_erp["Numero_Documento"] + "-" + df_notas_erp["CNPJ/CPF"]
-        df_notas_servico["ChaveComparadora"] = df_notas_servico["Numero_Documento"] + "-" + df_notas_servico["CNPJ/CPF"]
 
-        comparacao_notas_servico_erp, df_notas_somente_erp=conferencia.comparar_servicos_matriz_csw(df_notas_servico, df_notas_erp, "ChaveComparadora", "Situacao")
+        comparacao_notas_servico_erp, df_notas_somente_erp=conferencia.comparar_servicos_csw(df_notas_servico, df_notas_erp,"Situacao")
 
     #TRATAMENTO DE DADOS PARA EXPORTAR EM .XLSX
     #---------------------------------------------------------------------------------------------------
@@ -129,26 +137,13 @@ def main():
     if empresa_escolhida == "Filial":
 
         comparacao_qive_erp = conferencia.formatar_e_limpar_colunas_para_exportar(comparacao_qive_erp)
+        comparacao_cte_erp = conferencia.formatar_e_limpar_colunas_para_exportar(comparacao_cte_erp)
+        comparacao_notas_servico_erp = conferencia.formatar_e_limpar_colunas_para_exportar(comparacao_notas_servico_erp)
 
 
     #---------------------------------------------------------------------------------------------------
     #EXPORTAÇÃO DOS DADOS PARA .XLSX
     #---------------------------------------------------------------------------------------------------
-
-    def validar_colunas_exportacao(dataframe, colunas_esperadas, nome_relatorio):
-        colunas_faltando = [
-            coluna for coluna in colunas_esperadas
-            if coluna not in dataframe.columns
-        ]
-
-        if colunas_faltando:
-            raise ValueError(
-                f"As seguintes colunas estão faltando no relatório {nome_relatorio}: "
-                f"{colunas_faltando}"
-            )
-        
-    validar_colunas_exportacao(comparacao_qive_erp,COLUNAS_SALVAS["qive-filial"],"Comparação QIVE vs CSW")
-
     if empresa_escolhida == "Matriz":
 
         with pd.ExcelWriter("comparacao_notas.xlsx", engine="xlsxwriter") as writer:
@@ -186,16 +181,16 @@ def main():
                                 sheet_name="Comparação QIVE vs CSW",
                                 index=False
                                 )
-            # comparacao_cte_erp.to_excel(writer,
-            #                     columns=COLUNAS_SALVAS["cte"],
-            #                     sheet_name="Comparação CTE vs CSW",
-            #                     index=False
-            #                     )
-            # comparacao_notas_servico_erp.to_excel(writer,
-            #                     columns=COLUNAS_SALVAS["servico"],
-            #                     sheet_name="Comparacao Serviços vs CSW",
-            #                     index=False
-            #                     )   
+            comparacao_cte_erp.to_excel(writer,
+                                columns=COLUNAS_SALVAS["cte-filial"],
+                                sheet_name="Comparação CTE-QIVE vs CSW",
+                                index=False
+                                )
+            comparacao_notas_servico_erp.to_excel(writer,
+                                columns=COLUNAS_SALVAS["servico"],
+                                sheet_name="Comparacao Serviços vs CSW",
+                                index=False
+                                )   
             df_notas_somente_erp.to_excel(
                 writer,
                 sheet_name="Notas Somente no ERP",
@@ -203,8 +198,8 @@ def main():
             )
 
             formatar_planilha_excel(writer, COLUNAS_SALVAS["qive-filial"], "Comparação QIVE vs CSW")
-            #formatar_planilha_excel(writer, COLUNAS_SALVAS["cte"], "Comparação CTE vs CSW")
-            #formatar_planilha_excel(writer, COLUNAS_SALVAS["servico"], "Comparacao Serviços vs CSW")
+            formatar_planilha_excel(writer, COLUNAS_SALVAS["cte-filial"], "Comparação CTE-QIVE vs CSW")
+            formatar_planilha_excel(writer, COLUNAS_SALVAS["servico"], "Comparacao Serviços vs CSW")
             formatar_planilha_excel(writer, df_notas_somente_erp.columns.tolist(), "Notas Somente no ERP")
 
 

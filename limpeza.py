@@ -165,41 +165,62 @@ def ordenar_por_data_emissao(dataframe: pd.DataFrame,coluna_data: str) -> pd.Dat
     return dataframe_copia
 
 def limpar_numero_documento_servicos(valor) -> str:
-    """Limpa, padroniza e extrai apenas os dígitos numéricos de um documento.
 
-    Esta função é utilizada para tratar a diferença entre o código das notas de serviço lançadas no CSW e o que vem do documento de referência.
-    Ela remove nulos, pontuações, resíduos de conversão para float (.0), zeros à esquerda e trata um caso específico
-    de strings com 15 dígitos (removendo os 4 primeiros caracteres).
+    """Limpa e padroniza o número de uma Nota Fiscal (NF) tratada como string.
+
+    A função remove resíduos de formatação comuns do Pandas/Excel (como o
+    sufixo '.0'), filtra apenas os caracteres numéricos, aplica regras de
+    negócio específicas para remoção de prefixos temporais e elimina zeros à
+    esquerda.
+
+    Regras de Negócio Aplicadas:
+        1. Tratamento de Nulos: Retorna string vazia se o valor for NaN/Null.
+        2. Correção de Float: Remove o sufixo '.0' apenas se estiver no final
+           da string (evitando corromper zeros no meio do número).
+        3. Limpeza de Caracteres: Remove pontos, traços, letras e espaços,
+           mantendo apenas dígitos.
+        4. Corte de Prefixo: Se o número começar com '20260' e tiver mais de
+           10 dígitos, os 4 primeiros caracteres ('2026') são removidos.
+        5. Zeros à Esquerda: Remove todos os zeros à esquerda do número final.
 
     Args:
-        valor (Any): O valor bruto do documento a ser limpo. Pode ser string,
-            número (int/float) ou valores nulos (None/NaN).
+        valor (Any): O valor original do campo da NF (pode ser str, int, float
+          ou NaN).
 
     Returns:
-        str: Uma string contendo apenas os números limpos e padronizados,
-            ou uma string vazia caso o valor de entrada seja nulo.
+        str: O número da Nota Fiscal limpo, contendo apenas dígitos, ou uma
+             string vazia caso o valor seja inválido ou resulte em zero.
 
-    Exemplos:
-        >>> limpar_numero_documento_servicos(" 123.456-78 ")
-        '12345678'
-        >>> limpar_numero_documento_servicos(98765.0)
-        '98765'
-        >>> limpar_numero_documento_servicos("000123")
-        '123'
-        >>> limpar_numero_documento_servicos("111122223333444") # 15 dígitos
-        '22223333444'
-        
-        A ITACEX lança o documento como 202600000054285 mas lançam no CSW como 54285.
+    Examples:
+        >>> limpar_numero_nota_fiscal("20260123456")
+        '0123456' -> '123456' (Removeu '2026' e o zero à esquerda)
+
+        >>> limpar_numero_nota_fiscal("102.035")
+        '102035' (Manteve o zero do meio do número)
+
+        >>> limpar_numero_nota_fiscal("000123-A")
+        '123' (Removeu letras, símbolos e zeros à esquerda)
+
+        >>> limpar_numero_nota_fiscal(float('nan'))
+        ''
+
+         A ITACEX lança o documento como 202600000054285 mas lançam no CSW como 54285.
     """
+    
     if pd.isna(valor):
         return ""
 
-    valor = str(valor).strip().replace(".0", "")
+    valor = str(valor).strip()
+
+    if valor.endswith(".0"):
+        valor = valor[:-2]
 
     valor = "".join(caractere for caractere in valor if caractere.isdigit())
 
-    # 4. Regra de negócio: Se o resultado tem 15 dígitos, remove o prefixo (4 primeiros)
-    if len(valor) == 15:
+    # 4. Regra de negócio: Verifica se começa com '20260' E se possui mais de 9 dígitos,removendo o prefixo (4 primeiros)
+    if valor.startswith("20260") and len(valor) > 9:
         valor = valor[4:]
 
-    return valor.lstrip("0")
+    valor = valor.lstrip("0")
+
+    return valor

@@ -18,16 +18,16 @@ class LayoutFilialMG(LayoutBase):
 
             "arquivo_qive_entrada": selecionar_arquivo("Selecione o arquivo de Notas de Entrada do Qive"),
 
-            #"arquivo_cte": selecionar_arquivo("Selecione o arquivo de CTEs do Qive"),
+            "arquivo_cte": selecionar_arquivo("Selecione o arquivo de CTEs do Qive"),
 
-            #"arquivo_servico": selecionar_arquivo("Selecione o arquivo de Notas de Serviço do Qive"),
+            "arquivo_servico": selecionar_arquivo("Selecione o arquivo de Notas de Serviço do Qive"),
         }
 
         return arquivos
     
-    def carregar_relatorio_qive_filial(self,arquivo_sat):
+    def carregar_relatorio_qive_filial(self,arquivo_qive):
 
-        df_notas_qive_filial = pd.read_excel(arquivo_sat,
+        dataframe = pd.read_excel(arquivo_qive,
                                     sheet_name="relatorio",
                                     usecols=COLUNAS_IMPORTADAS["qive-filial"],
                                     dtype={
@@ -36,7 +36,7 @@ class LayoutFilialMG(LayoutBase):
                                     },
                                         na_values=valores_vazios)
         
-        df_notas_qive_filial = df_notas_qive_filial.rename(
+        dataframe = dataframe.rename(
         columns={
             "Número" : "Numero_Documento",
             "Valor Total da Nota" : "Valor",
@@ -47,40 +47,39 @@ class LayoutFilialMG(LayoutBase):
             }
         )
 
-        df_notas_qive_filial["Valor"] = converter_valor_monetario_brasileiro(df_notas_qive_filial["Valor"])
-        df_notas_qive_filial["Valor"] = pd.to_numeric(df_notas_qive_filial["Valor"], errors='coerce')
+        dataframe["Valor"] = converter_valor_monetario_brasileiro(dataframe["Valor"])
+        dataframe["Valor"] = pd.to_numeric(dataframe["Valor"], errors='coerce')
            
-        return df_notas_qive_filial
+        return dataframe
     
+    def carregar_relatorio_cte_filial(self,arquivo_cte_filial):
 
-    def carregar_relatorio_cte_filial(self,arquivo_cte):
-
-        with open(arquivo_cte, "rb") as arquivo:
-            conteudo_bytes = arquivo.read()
-
-        for encoding in ["utf-8", "cp1252", "latin1"]:
-            try:
-                conteudo_html = conteudo_bytes.decode(encoding)
-                break
-            except UnicodeDecodeError:
-                continue
-        lista_tabelas_ctes = pd.read_html(StringIO(conteudo_html), header=0, converters={"CHAVE_DE_ACESSO" :str},flavor="html5lib")
-        df_ctes = lista_tabelas_ctes[0][COLUNAS_IMPORTADAS["cte"]].astype({"CHAVE_DE_ACESSO" :str})
-
-        df_ctes = df_ctes.rename(
+        dataframe = pd.read_excel(arquivo_cte_filial,
+                                    #sheet_name="relatorio",
+                                    usecols=COLUNAS_IMPORTADAS["cte-filial"],
+                                    dtype={
+                                    "Número" :str,
+                                    "Chave de Acesso" :str
+                                    },
+                                        na_values=valores_vazios)
+        
+        dataframe = dataframe.rename(
         columns={
-            "CHAVE_DE_ACESSO" : "ChaveAcesso",
-            "NÚMERO_CTE" : "Numero_Documento",
-            "VALOR_TOTAL_PREST" : "Valor",
-            "NOME_EMITENTE" : "Nome_Emitente",
-            "SITUACAO" : "Situacao",
-            "DATA_EMISSÃO" : "Data_Emissao"
+            "Número" : "Numero_Documento",
+            #"Valor Total da Nota" : "Valor",
+            "Emitente" : "Nome_Emitente",
+            "Emissão" : "Data_Emissao",
+            "Status" : "Situacao",
+            "Chave de Acesso" : "ChaveAcesso"
             }
         )
 
-        return df_ctes
-    
-    def carregar_relatorio_servico_matriz(self,arquivo_servico):
+        dataframe["Valor"] = converter_valor_monetario_brasileiro(dataframe["Valor"])
+        dataframe["Valor"] = pd.to_numeric(dataframe["Valor"], errors='coerce')
+           
+        return dataframe
+        
+    def carregar_relatorio_servico_filial(self,arquivo_servico):
 
         df_notas_servico = pd.read_excel(arquivo_servico,
                                 usecols=COLUNAS_IMPORTADAS["servico"],
@@ -107,17 +106,17 @@ class LayoutFilialMG(LayoutBase):
 
     def carregar_relatorios_externos_filial(self, arquivos):
         df_notas_qive_filial = self.carregar_relatorio_qive_filial(arquivos["arquivo_qive_entrada"])
-        #df_ctes = self.carregar_relatorio_cte_matriz(arquivos["arquivo_cte"])
-        #df_notas_servico = self.carregar_relatorio_servico_matriz(arquivos["arquivo_servico"])
+        df_ctes_filial = self.carregar_relatorio_cte_filial(arquivos["arquivo_cte"])
+        df_notas_servico_filial = self.carregar_relatorio_servico_filial(arquivos["arquivo_servico"])
 
-        #df_notas_qive_filial = self.aplicar_limpeza_dados(df_notas_qive_filial)
-        #df_ctes = self.aplicar_limpeza_dados(df_ctes)
-        #df_notas_servico = self.aplicar_limpeza_dados(df_notas_servico)
+        df_notas_qive_filial = self.aplicar_limpeza_dados(df_notas_qive_filial)
+        df_ctes_filial = self.aplicar_limpeza_dados(df_ctes_filial)
+        df_notas_servico_filial = self.aplicar_limpeza_dados(df_notas_servico_filial)
 
         return {
             "qive-filial": df_notas_qive_filial,
-            #"cte": df_ctes,
-            #"servico": df_notas_servico
+            "cte-filial": df_ctes_filial,
+            "servico": df_notas_servico_filial
         }
     
     def aplicar_limpeza_dados(self,dataframe: pd.DataFrame) -> pd.DataFrame:

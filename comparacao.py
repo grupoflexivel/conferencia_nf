@@ -190,7 +190,9 @@ def remover_documentos_duplicados_reprocessamento(dataframe: pd.DataFrame,tipo_d
     chaves_deduplicacao = {
         "sat": ["ChaveAcesso"],
         "cte": ["ChaveAcesso"],
-        "servico": ["Numero_Documento", "CNPJ/CPF"]
+        "servico": ["Numero_Documento", "CNPJ/CPF"],
+        "qive-filial" :["ChaveAcesso"],
+        "cte-filial" :["ChaveAcesso"]
     }
 
     colunas_chave = chaves_deduplicacao[tipo_documento]

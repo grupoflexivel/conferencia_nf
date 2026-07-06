@@ -95,18 +95,20 @@ class ConferenciaNotaFiscal:
 
         return comparativo, notas_restantes_csw
     
-    def comparar_servicos_matriz_csw(self, dataframe:pd.DataFrame, dataframe_csw: pd.DataFrame, coluna_base_comparacao: str,
-                         coluna_situacao: str) -> tuple[pd.DataFrame]:
+    def comparar_servicos_csw(self, dataframe:pd.DataFrame, dataframe_csw: pd.DataFrame,coluna_situacao: str) -> tuple[pd.DataFrame]:
         
         dataframe = dataframe.copy()
         dataframe["Numero_Documento_Original"] = dataframe["Numero_Documento"]
         dataframe["Numero_Documento"] = dataframe["Numero_Documento"].apply(limpar_numero_documento_servicos)
 
-        comparativo = self.realizar_merge(dataframe, dataframe_csw, coluna_base_comparacao)
+        dataframe_csw["ChaveComparadora"] = dataframe_csw["Numero_Documento"] + "-" + dataframe_csw["CNPJ/CPF"]
+        dataframe["ChaveComparadora"] = dataframe["Numero_Documento"] + "-" + dataframe["CNPJ/CPF"]
+    
+        comparativo = self.realizar_merge(dataframe, dataframe_csw, "ChaveComparadora")
 
         comparativo = self.realizar_analises_colunas(comparativo,coluna_situacao,verificar_cancelamentos_notas_servico=True)
 
-        notas_restantes_csw = self.remover_notas_ja_lancadas(dataframe,dataframe_csw,coluna_base_comparacao)
+        notas_restantes_csw = self.remover_notas_ja_lancadas(dataframe,dataframe_csw,"ChaveComparadora")
 
         return comparativo, notas_restantes_csw
 

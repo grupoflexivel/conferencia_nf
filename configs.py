@@ -8,6 +8,7 @@ COLUNAS_IMPORTADAS = {
     "cte": ["NÚMERO_CTE","SITUACAO","VALOR_TOTAL_PREST","NOME_EMITENTE","CHAVE_DE_ACESSO", "DATA_EMISSÃO"],
     "servico": ["Número","Data de Cancelamento","CPF/CNPJ - Prestador","Valor Serviços","Prestador - Nome/Razão Social", "Data de Emissão"],
     "qive-filial": ["Número","Status","Valor Total da Nota","Nome PJ Emitente","Chave de Acesso", "Data Emissão"],
+    "cte-filial" :["Número","Status","Valor","Emitente","Chave de Acesso", "Emissão"]
 
 }
 
@@ -20,7 +21,9 @@ COLUNAS_SALVAS = {
     "servico": ["Observações","status","Numero_Documento","Numero_Documento_Original","Nome_Emitente","CNPJ/CPF","Data_Emissao","Valor","Situacao","Alerta Comparador","ChaveAcesso","Numero_Documento_CSW","Valor_CSW","CNPJ/CPF_CSW",
             "Cód. Par","Parâmetro"],
     
-    "qive-filial": ["Observações","status","Numero_Documento","Nome_Emitente","CNPJ/CPF","Data_Emissao","Valor","Situacao","Alerta Comparador","ChaveAcesso","Numero_Documento_CSW","Valor_CSW","Cód. Par","Parâmetro"]
+    "qive-filial": ["Observações","status","Numero_Documento","Nome_Emitente","CNPJ/CPF","Data_Emissao","Valor","Situacao","Alerta Comparador","ChaveAcesso","Numero_Documento_CSW","Valor_CSW","Cód. Par","Parâmetro"],
+    
+    "cte-filial" :["Observações","status","Numero_Documento","Nome_Emitente","Data_Emissao","Valor","Situacao","Alerta Comparador","ChaveAcesso","Numero_Documento_CSW","Valor_CSW","Cód. Par","Parâmetro"],
 }
 
 COLUNAS_REPROCESSAMENTO = {
@@ -30,18 +33,16 @@ COLUNAS_REPROCESSAMENTO = {
 
     "servico": ["Numero_Documento","Situacao","CNPJ/CPF","Nome_Emitente","Valor","ChaveAcesso","Data_Emissao","status","Alerta Comparador","Observações"],
 
-    "qive-filial": ["Situacao","ChaveAcesso","Nome_Emitente","Numero_Documento","Valor","Data_Emissao","status","Alerta Comparador","Observações"]
+    "qive-filial": ["Situacao","ChaveAcesso","Nome_Emitente","Numero_Documento","Valor","Data_Emissao","status","Alerta Comparador","Observações"],
 
-}
+    "cte-filial" :["Situacao","ChaveAcesso","Nome_Emitente","Numero_Documento","Valor","Data_Emissao","status","Alerta Comparador","Observações"]
 
-CHAVES_DEDUPLICACAO = {
-    "sat": ["ChaveAcesso"],
-    "cte": ["ChaveAcesso"],
-    "servico": ["Numero_Documento", "CNPJ/CPF"]
 }
 
 NOMES_ABAS_NO_EXCEL = {
     "sat": "Comparação SAT vs CSW",
     "cte": "Comparação CTE vs CSW",
-    "servico": "Comparacao Serviços vs CSW"
+    "servico": "Comparacao Serviços vs CSW",
+    "qive-filial":"Comparação QIVE vs CSW",
+    "cte-filial":"Comparação CTE-QIVE vs CSW"
 }
