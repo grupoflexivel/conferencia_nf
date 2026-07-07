@@ -2,7 +2,7 @@ import pandas as pd
 from layouts.base import LayoutBase
 from configs import COLUNAS_IMPORTADAS,valores_vazios
 from arquivos import selecionar_arquivo
-from limpeza import converter_valor_monetario_brasileiro
+from limpeza import converter_valor_monetario_brasileiro,limpar_numero_documento_servicos
 from io import StringIO
 
 class LayoutFilialMG(LayoutBase):
@@ -97,11 +97,16 @@ class LayoutFilialMG(LayoutBase):
             "Data de Emissão" : "Data_Emissao"
             }
         )
-        
+
+        # Normaliza o número na carga para que a deduplicação do reprocessamento
+        # e o merge usem a mesma chave que foi salva no mês anterior (ex: 202600000054871 -> 54871).
+        df_notas_servico["Numero_Documento_Original"] = df_notas_servico["Numero_Documento"]
+        df_notas_servico["Numero_Documento"] = df_notas_servico["Numero_Documento"].apply(limpar_numero_documento_servicos)
+
         df_notas_servico["Valor"] = converter_valor_monetario_brasileiro(df_notas_servico["Valor"])
         df_notas_servico["Valor"] = pd.to_numeric(df_notas_servico["Valor"], errors='coerce')
 
-        
+
         return df_notas_servico
 
     def carregar_relatorios_externos_filial(self, arquivos):

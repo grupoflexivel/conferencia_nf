@@ -98,7 +98,10 @@ class ConferenciaNotaFiscal:
     def comparar_servicos_csw(self, dataframe:pd.DataFrame, dataframe_csw: pd.DataFrame,coluna_situacao: str) -> tuple[pd.DataFrame]:
         
         dataframe = dataframe.copy()
-        dataframe["Numero_Documento_Original"] = dataframe["Numero_Documento"]
+        # O número já pode ter sido normalizado em uma análise anterior.
+        # Só captura o original aqui se ainda não existir; a limpeza é idempotente.
+        if "Numero_Documento_Original" not in dataframe.columns:
+            dataframe["Numero_Documento_Original"] = dataframe["Numero_Documento"]
         dataframe["Numero_Documento"] = dataframe["Numero_Documento"].apply(limpar_numero_documento_servicos)
 
         dataframe_csw["ChaveComparadora"] = dataframe_csw["Numero_Documento"] + "-" + dataframe_csw["CNPJ/CPF"]
