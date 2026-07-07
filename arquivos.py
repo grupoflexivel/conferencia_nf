@@ -1,61 +1,7 @@
 from configs import NOMES_ABAS_NO_EXCEL,COLUNAS_REPROCESSAMENTO
 import pandas as pd
 import numpy as np
-from tkinter import Tk, filedialog, messagebox
 from comparacao import remover_documentos_duplicados_reprocessamento
-
-def selecionar_arquivo(titulo: str, obrigatorio: bool = True) -> str | None:
-    """
-    Abre uma interface gráfica (GUI) para que o usuário selecione um arquivo Excel.
-
-    A função inicializa uma instância oculta do Tkinter, exibe uma mensagem informativa 
-    com as instruções (título) e abre a janela de busca de arquivos filtrando por 
-    extensões do Excel. Caso o arquivo seja obrigatório e o usuário feche a janela 
-    sem escolher, um erro é lançado.
-
-    Parameters
-    ----------
-    titulo : str
-        Mensagem ou instrução que será exibida na caixa de diálogo e no topo da 
-        janela de seleção (ex: "Selecione o arquivo de faturamento do mês anterior").
-    obrigatorio : bool, optional
-        Define se a seleção do arquivo é estritamente necessária para a execução do 
-        sistema. Se True, a falta de seleção gera uma exceção. O padrão é True.
-
-    Returns
-    -------
-    str | None
-        O caminho completo do arquivo selecionado em formato string. Retorna None 
-        apenas se `obrigatorio` for False e o usuário cancelar a seleção.
-
-    Raises
-    ------
-    ValueError
-        Se `obrigatorio` for True e o usuário cancelar ou fechar a janela de 
-        seleção sem escolher um arquivo válido.
-    """
-    janela = Tk()
-    janela.withdraw()  # Esconde a janela principal do Tkinter
-
-    messagebox.showinfo("Selecionar arquivo", titulo)
-
-    caminho_arquivo = filedialog.askopenfilename(
-        title=titulo,
-        filetypes=[
-            ("Arquivos Excel", "*.xlsx *.xls"),
-            ("Todos os arquivos", "*.*")
-        ]
-    )
-
-    janela.destroy()
-
-    if not caminho_arquivo and obrigatorio:
-        raise ValueError(f"Nenhum arquivo selecionado para: {titulo}")
-    
-    if not caminho_arquivo:
-        return None
-
-    return caminho_arquivo
 
 def carregar_notas_pendentes_mes_anterior(arquivo: str, nome_aba:str, colunas_importadas: list):
     """

@@ -46,3 +46,16 @@ NOMES_ABAS_NO_EXCEL = {
     "qive-filial":"Comparação QIVE vs CSW",
     "cte-filial":"Comparação CTE-QIVE vs CSW"
 }
+
+# Colunas que identificam univocamente uma nota, por tipo de documento.
+# Usadas na deduplicação e na supressão de notas recusadas.
+CHAVES_DEDUPLICACAO = {
+    "sat": ["ChaveAcesso"],
+    "cte": ["ChaveAcesso"],
+    "servico": ["Numero_Documento", "CNPJ/CPF"],
+    "qive-filial": ["ChaveAcesso"],
+    "cte-filial": ["ChaveAcesso"],
+}
+
+# Nome da aba que guarda o registro persistente de notas recusadas
+NOME_ABA_RECUSADAS = "Notas Recusadas"

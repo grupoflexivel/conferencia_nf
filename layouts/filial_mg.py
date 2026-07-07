@@ -1,29 +1,25 @@
 import pandas as pd
 from layouts.base import LayoutBase
 from configs import COLUNAS_IMPORTADAS,valores_vazios
-from arquivos import selecionar_arquivo
+from seletor_unidade_claude import selecionar_arquivos as selecionar_arquivos_gui
 from limpeza import converter_valor_monetario_brasileiro,limpar_numero_documento_servicos
 from io import StringIO
 
 class LayoutFilialMG(LayoutBase):
     nome = "Filial_MG"
+    arquivo_saida = "comparacao_notas_filial.xlsx"
 
     def selecionar_arquivos(self):
-        arquivos = {
-            "arquivo_anterior": selecionar_arquivo("Selecione o arquivo de notas do mês passado", obrigatorio=False),
-                    
-            "arquivo_notas_entrada": selecionar_arquivo("Selecione o arquivo de Notas de Entrada do Consistem"),
+        campos = [
+            {"chave": "arquivo_anterior", "titulo": "Notas da análise anterior", "obrigatorio": False},
+            {"chave": "arquivo_notas_entrada", "titulo": "Notas de Entrada do Consistem", "obrigatorio": True},
+            {"chave": "arquivo_devolucoes", "titulo": "Notas de Devolução do Consistem", "obrigatorio": True},
+            {"chave": "arquivo_qive_entrada", "titulo": "Notas de Entrada do Qive", "obrigatorio": True},
+            {"chave": "arquivo_cte", "titulo": "Arquivo de CTEs do Qive", "obrigatorio": True},
+            {"chave": "arquivo_servico", "titulo": "Arquivo de Notas de Serviço do Qive", "obrigatorio": True},
+        ]
 
-            "arquivo_devolucoes": selecionar_arquivo("Selecione o arquivo de Notas de Devolução do Consistem"),
-
-            "arquivo_qive_entrada": selecionar_arquivo("Selecione o arquivo de Notas de Entrada do Qive"),
-
-            "arquivo_cte": selecionar_arquivo("Selecione o arquivo de CTEs do Qive"),
-
-            "arquivo_servico": selecionar_arquivo("Selecione o arquivo de Notas de Serviço do Qive"),
-        }
-
-        return arquivos
+        return selecionar_arquivos_gui("Selecione os arquivos - Filial MG", campos)
     
     def carregar_relatorio_qive_filial(self,arquivo_qive):
 
@@ -109,7 +105,7 @@ class LayoutFilialMG(LayoutBase):
 
         return df_notas_servico
 
-    def carregar_relatorios_externos_filial(self, arquivos):
+    def carregar_documentos(self, arquivos):
         df_notas_qive_filial = self.carregar_relatorio_qive_filial(arquivos["arquivo_qive_entrada"])
         df_ctes_filial = self.carregar_relatorio_cte_filial(arquivos["arquivo_cte"])
         df_notas_servico_filial = self.carregar_relatorio_servico_filial(arquivos["arquivo_servico"])
@@ -123,7 +119,19 @@ class LayoutFilialMG(LayoutBase):
             "cte-filial": df_ctes_filial,
             "servico": df_notas_servico_filial
         }
-    
+
+    def comparar(self, conferencia, dados, df_erp):
+        comparacao_qive, df_erp = conferencia.comparar_sat_ou_qive_csw(dados["qive-filial"], df_erp, "ChaveAcesso", "Situacao")
+        comparacao_cte, df_erp = conferencia.comparar_sat_ou_qive_csw(dados["cte-filial"], df_erp, "ChaveAcesso", "Situacao")
+        comparacao_servico, df_notas_somente_erp = conferencia.comparar_servicos_csw(dados["servico"], df_erp, "Situacao")
+
+        comparacoes = {
+            "qive-filial": comparacao_qive,
+            "cte-filial": comparacao_cte,
+            "servico": comparacao_servico,
+        }
+        return comparacoes, df_notas_somente_erp
+
     def aplicar_limpeza_dados(self,dataframe: pd.DataFrame) -> pd.DataFrame:
 
         dataframe = dataframe.copy()

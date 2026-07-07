@@ -1,29 +1,25 @@
 import pandas as pd
 from layouts.base import LayoutBase
 from configs import COLUNAS_IMPORTADAS,valores_vazios
-from arquivos import selecionar_arquivo
+from seletor_unidade_claude import selecionar_arquivos as selecionar_arquivos_gui
 from limpeza import converter_valor_monetario_brasileiro,limpar_numero_documento_servicos
 from io import StringIO
 
 class LayoutMatriz(LayoutBase):
     nome = "Matriz"
+    arquivo_saida = "comparacao_notas.xlsx"
 
     def selecionar_arquivos(self):
-        arquivos = {
-            "arquivo_anterior": selecionar_arquivo("Selecione o arquivo de notas do mês passado", obrigatorio=False),
-                    
-            "arquivo_notas_entrada": selecionar_arquivo("Selecione o arquivo de Notas de Entrada do Consistem"),
+        campos = [
+            {"chave": "arquivo_anterior", "titulo": "Notas da análise anterior", "obrigatorio": False},
+            {"chave": "arquivo_notas_entrada", "titulo": "Notas de Entrada do Consistem", "obrigatorio": True},
+            {"chave": "arquivo_devolucoes", "titulo": "Notas de Devolução do Consistem", "obrigatorio": True},
+            {"chave": "arquivo_sat", "titulo": "Arquivo SAT", "obrigatorio": True},
+            {"chave": "arquivo_cte", "titulo": "Arquivo de CTEs", "obrigatorio": True},
+            {"chave": "arquivo_servico", "titulo": "Arquivo de Notas de Serviço", "obrigatorio": True},
+        ]
 
-            "arquivo_devolucoes": selecionar_arquivo("Selecione o arquivo de Notas de Devolução do Consistem"),
-
-            "arquivo_sat": selecionar_arquivo("Selecione o arquivo SAT"),
-
-            "arquivo_cte": selecionar_arquivo("Selecione o arquivo de CTEs"),
-
-            "arquivo_servico": selecionar_arquivo("Selecione o arquivo de Notas de Serviço"),
-        }
-
-        return arquivos
+        return selecionar_arquivos_gui("Selecione os arquivos - Matriz", campos)
     
     def carregar_relatorio_sat_matriz(self,arquivo_sat):
 
@@ -103,7 +99,7 @@ class LayoutMatriz(LayoutBase):
 
         return df_notas_servico
 
-    def carregar_relatorios_externos(self, arquivos):
+    def carregar_documentos(self, arquivos):
         df_notas_sat = self.carregar_relatorio_sat_matriz(arquivos["arquivo_sat"])
         df_ctes = self.carregar_relatorio_cte_matriz(arquivos["arquivo_cte"])
         df_notas_servico = self.carregar_relatorio_servico_matriz(arquivos["arquivo_servico"])
@@ -117,7 +113,19 @@ class LayoutMatriz(LayoutBase):
             "cte": df_ctes,
             "servico": df_notas_servico
         }
-    
+
+    def comparar(self, conferencia, dados, df_erp):
+        comparacao_sat, df_erp = conferencia.comparar_sat_ou_qive_csw(dados["sat"], df_erp, "ChaveAcesso", "Situacao")
+        comparacao_cte, df_erp = conferencia.comparar_cte_matriz_csw(dados["cte"], df_erp, "ChaveAcesso", "Situacao")
+        comparacao_servico, df_notas_somente_erp = conferencia.comparar_servicos_csw(dados["servico"], df_erp, "Situacao")
+
+        comparacoes = {
+            "sat": comparacao_sat,
+            "cte": comparacao_cte,
+            "servico": comparacao_servico,
+        }
+        return comparacoes, df_notas_somente_erp
+
     def aplicar_limpeza_dados(self,dataframe: pd.DataFrame) -> pd.DataFrame:
 
         dataframe = dataframe.copy()
