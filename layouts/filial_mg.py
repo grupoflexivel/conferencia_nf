@@ -1,7 +1,7 @@
 import pandas as pd
 from layouts.base import LayoutBase
 from configs import COLUNAS_IMPORTADAS,valores_vazios
-from seletor_unidade_claude import selecionar_arquivos as selecionar_arquivos_gui
+from seletor_unidade import selecionar_arquivos as selecionar_arquivos_gui
 from limpeza import converter_valor_monetario_brasileiro,limpar_numero_documento_servicos
 from io import StringIO
 

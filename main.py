@@ -12,7 +12,7 @@ from configs import COLUNAS_SALVAS, NOMES_ABAS_NO_EXCEL
 from excel_utils import formatar_planilha_excel
 from arquivos import adicionar_pendentes_mes_anterior
 from recusadas import coletar_recusadas, suprimir_recusadas, construir_aba_recusadas
-from seletor_unidade_claude import selecionar_unidade
+from seletor_unidade import selecionar_unidade
 
 
 # Silencia os avisos chatos do openpyxl

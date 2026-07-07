@@ -164,17 +164,17 @@ def selecionar_arquivos(titulo_janela, campos):
 
         tk.Label(
             janela, text=campo["titulo"] + sufixo, font=("Arial", 10),
-            anchor="w", width=42,
+            anchor="w", width=52,
         ).grid(row=indice, column=0, sticky="w", padx=15, pady=4)
 
         tk.Button(
-            janela, text="Selecionar…", width=12, cursor="hand2",
+            janela, text="Selecionar…", width=14, cursor="hand2",
             command=lambda chave=campo["chave"]: escolher(chave),
         ).grid(row=indice, column=1, padx=5)
 
         rotulo = tk.Label(
             janela, text=TEXTO_VAZIO, font=("Arial", 9), fg="#9e9e9e",
-            width=32, anchor="w",
+            width=44, anchor="w",
         )
         rotulo.grid(row=indice, column=2, sticky="w", padx=5)
         rotulos_caminho[campo["chave"]] = rotulo
@@ -183,12 +183,12 @@ def selecionar_arquivos(titulo_janela, campos):
     frame_acoes.grid(row=len(campos) + 1, column=0, columnspan=3, pady=15)
 
     tk.Button(
-        frame_acoes, text="Continuar", width=15, bg="#4CAF50", fg="white",
+        frame_acoes, text="Continuar", width=14, bg="#4CAF50", fg="white",
         cursor="hand2", command=continuar,
     ).pack(side=tk.LEFT, padx=10)
 
     tk.Button(
-        frame_acoes, text="Cancelar", width=15, cursor="hand2", command=cancelar,
+        frame_acoes, text="Cancelar", width=14, cursor="hand2", command=cancelar,
     ).pack(side=tk.LEFT, padx=10)
 
     janela.protocol("WM_DELETE_WINDOW", cancelar)
