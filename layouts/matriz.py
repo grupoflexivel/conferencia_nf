@@ -8,15 +8,16 @@ from io import StringIO
 class LayoutMatriz(LayoutBase):
     nome = "Matriz"
     arquivo_saida = "comparacao_notas.xlsx"
+    ORDEM_COMPARACAO = ["sat", "cte", "servico"]
 
     def selecionar_arquivos(self):
         campos = [
             {"chave": "arquivo_anterior", "titulo": "Notas da análise anterior", "obrigatorio": False},
-            {"chave": "arquivo_notas_entrada", "titulo": "Notas de Entrada do Consistem", "obrigatorio": True},
-            {"chave": "arquivo_devolucoes", "titulo": "Notas de Devolução do Consistem", "obrigatorio": True},
-            {"chave": "arquivo_sat", "titulo": "Arquivo SAT", "obrigatorio": True},
-            {"chave": "arquivo_cte", "titulo": "Arquivo de CTEs", "obrigatorio": True},
-            {"chave": "arquivo_servico", "titulo": "Arquivo de Notas de Serviço", "obrigatorio": True},
+            {"chave": "arquivo_notas_entrada", "titulo": "Notas de Entrada do Consistem", "obrigatorio": False},
+            {"chave": "arquivo_devolucoes", "titulo": "Notas de Devolução do Consistem", "obrigatorio": False},
+            {"chave": "arquivo_sat", "titulo": "Arquivo SAT", "obrigatorio": False},
+            {"chave": "arquivo_cte", "titulo": "Arquivo de CTEs", "obrigatorio": False},
+            {"chave": "arquivo_servico", "titulo": "Arquivo de Notas de Serviço", "obrigatorio": False},
         ]
 
         return selecionar_arquivos_gui("Selecione os arquivos - Matriz", campos)
@@ -100,31 +101,19 @@ class LayoutMatriz(LayoutBase):
         return df_notas_servico
 
     def carregar_documentos(self, arquivos):
-        df_notas_sat = self.carregar_relatorio_sat_matriz(arquivos["arquivo_sat"])
-        df_ctes = self.carregar_relatorio_cte_matriz(arquivos["arquivo_cte"])
-        df_notas_servico = self.carregar_relatorio_servico_matriz(arquivos["arquivo_servico"])
-
-        df_notas_sat = self.aplicar_limpeza_dados(df_notas_sat)
-        df_ctes = self.aplicar_limpeza_dados(df_ctes)
-        df_notas_servico = self.aplicar_limpeza_dados(df_notas_servico)
-
-        return {
-            "sat": df_notas_sat,
-            "cte": df_ctes,
-            "servico": df_notas_servico
+        documentos = {
+            "sat": self._carregar_se_presente(arquivos, "arquivo_sat", self.carregar_relatorio_sat_matriz),
+            "cte": self._carregar_se_presente(arquivos, "arquivo_cte", self.carregar_relatorio_cte_matriz),
+            "servico": self._carregar_se_presente(arquivos, "arquivo_servico", self.carregar_relatorio_servico_matriz),
         }
+        return {tipo: df for tipo, df in documentos.items() if df is not None}
 
-    def comparar(self, conferencia, dados, df_erp):
-        comparacao_sat, df_erp = conferencia.comparar_sat_ou_qive_csw(dados["sat"], df_erp, "ChaveAcesso", "Situacao")
-        comparacao_cte, df_erp = conferencia.comparar_cte_matriz_csw(dados["cte"], df_erp, "ChaveAcesso", "Situacao")
-        comparacao_servico, df_notas_somente_erp = conferencia.comparar_servicos_csw(dados["servico"], df_erp, "Situacao")
-
-        comparacoes = {
-            "sat": comparacao_sat,
-            "cte": comparacao_cte,
-            "servico": comparacao_servico,
-        }
-        return comparacoes, df_notas_somente_erp
+    def _comparar_tipo(self, conferencia, tipo, df_documento, df_erp):
+        if tipo == "cte":
+            return conferencia.comparar_cte_matriz_csw(df_documento, df_erp, "ChaveAcesso", "Situacao")
+        if tipo == "servico":
+            return conferencia.comparar_servicos_csw(df_documento, df_erp, "Situacao")
+        return conferencia.comparar_sat_ou_qive_csw(df_documento, df_erp, "ChaveAcesso", "Situacao")
 
     def aplicar_limpeza_dados(self,dataframe: pd.DataFrame) -> pd.DataFrame:
 

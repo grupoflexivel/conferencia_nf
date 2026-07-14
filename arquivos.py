@@ -83,10 +83,17 @@ def adicionar_pendentes_mes_anterior(dataframe_atual :pd.DataFrame,
     - Esta função depende de duas estruturas globais/constantes pré-definidas:
       `NOMES_ABAS_NO_EXCEL` (dicionário) e `COLUNAS_REPROCESSAMENTO` (dicionário).
     - Valores não numéricos na coluna 'Valor' serão convertidos em `NaN` (`errors='coerce'`)"""
-    
+
+    nome_aba = NOMES_ABAS_NO_EXCEL[tipo_documento]
+
+    # O arquivo anterior pode ter sido gerado sem este tipo de documento (a aba
+    # não existe). Nesse caso não há pendentes a adicionar: devolve a base atual.
+    if nome_aba not in pd.ExcelFile(arquivo_anterior).sheet_names:
+        return dataframe_atual
+
     dataframe_mes_anterior = carregar_notas_pendentes_mes_anterior(
         arquivo=arquivo_anterior,
-        nome_aba=NOMES_ABAS_NO_EXCEL[tipo_documento],
+        nome_aba=nome_aba,
         colunas_importadas=COLUNAS_REPROCESSAMENTO[tipo_documento]
         )
     

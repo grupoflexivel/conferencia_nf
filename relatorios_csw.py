@@ -38,14 +38,23 @@ def padronizar_colunas_csw(dataframe: pd.DataFrame) -> pd.DataFrame:
     return dataframe
 
 def concatenar_relatorios_erp(arquivo_notas_entrada: str, arquivo_notas_devolucao: str) -> pd.DataFrame:
-    df_notas_entrada = carregar_relatorio_csw(arquivo_notas_entrada)
-    df_notas_devolucao = carregar_relatorio_csw(arquivo_notas_devolucao)
+    # O ERP é obrigatório, mas basta um dos dois (entrada e/ou devolução).
+    arquivos_erp = [
+        arquivo for arquivo in (arquivo_notas_entrada, arquivo_notas_devolucao)
+        if arquivo
+    ]
+
+    if not arquivos_erp:
+        raise ValueError(
+            "É obrigatório carregar ao menos um relatório do ERP "
+            "(Notas de Entrada ou de Devolução do Consistem)."
+        )
 
     df_erp = pd.concat(
-        [df_notas_entrada,df_notas_devolucao],
-        ignore_index=True
-        )
-    
-    df_erp=padronizar_colunas_csw(df_erp)
+        [carregar_relatorio_csw(arquivo) for arquivo in arquivos_erp],
+        ignore_index=True,
+    )
+
+    df_erp = padronizar_colunas_csw(df_erp)
 
     return df_erp

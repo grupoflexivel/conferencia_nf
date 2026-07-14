@@ -90,10 +90,26 @@ def main():
         print("Seleção de arquivos cancelada. Encerrando.")
         return
 
+    # O ERP é obrigatório: pelo menos entrada OU devolução do Consistem.
+    if not (arquivos.get("arquivo_notas_entrada") or arquivos.get("arquivo_devolucoes")):
+        messagebox.showwarning(
+            "Arquivo obrigatório",
+            "Carregue ao menos um relatório do ERP (Notas de Entrada ou de Devolução do Consistem).",
+        )
+        return
+
     arquivo_anterior = arquivos["arquivo_anterior"]
 
     # 1. Carregamento (ERP comum + documentos externos da unidade)
     dados, df_notas_erp = layout.carregar_dados(arquivos)
+
+    # Precisa de ao menos um relatório externo para haver o que comparar.
+    if not dados:
+        messagebox.showwarning(
+            "Nenhum documento",
+            "Carregue ao menos um relatório externo para comparar (SAT, CTE, Serviço ou QIVE).",
+        )
+        return
 
     # 2. Notas pendentes do mês anterior
     if arquivo_anterior:

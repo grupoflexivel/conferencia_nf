@@ -8,15 +8,16 @@ from io import StringIO
 class LayoutFilialMG(LayoutBase):
     nome = "Filial_MG"
     arquivo_saida = "comparacao_notas_filial.xlsx"
+    ORDEM_COMPARACAO = ["qive-filial", "cte-filial", "servico"]
 
     def selecionar_arquivos(self):
         campos = [
             {"chave": "arquivo_anterior", "titulo": "Notas da análise anterior", "obrigatorio": False},
-            {"chave": "arquivo_notas_entrada", "titulo": "Notas de Entrada do Consistem", "obrigatorio": True},
-            {"chave": "arquivo_devolucoes", "titulo": "Notas de Devolução do Consistem", "obrigatorio": True},
-            {"chave": "arquivo_qive_entrada", "titulo": "Notas de Entrada do Qive", "obrigatorio": True},
-            {"chave": "arquivo_cte", "titulo": "Arquivo de CTEs do Qive", "obrigatorio": True},
-            {"chave": "arquivo_servico", "titulo": "Arquivo de Notas de Serviço do Qive", "obrigatorio": True},
+            {"chave": "arquivo_notas_entrada", "titulo": "Notas de Entrada do Consistem", "obrigatorio": False},
+            {"chave": "arquivo_devolucoes", "titulo": "Notas de Devolução do Consistem", "obrigatorio": False},
+            {"chave": "arquivo_qive_entrada", "titulo": "Notas de Entrada do Qive", "obrigatorio": False},
+            {"chave": "arquivo_cte", "titulo": "Arquivo de CTEs do Qive", "obrigatorio": False},
+            {"chave": "arquivo_servico", "titulo": "Arquivo de Notas de Serviço do Qive", "obrigatorio": False},
         ]
 
         return selecionar_arquivos_gui("Selecione os arquivos - Filial MG", campos)
@@ -106,31 +107,17 @@ class LayoutFilialMG(LayoutBase):
         return df_notas_servico
 
     def carregar_documentos(self, arquivos):
-        df_notas_qive_filial = self.carregar_relatorio_qive_filial(arquivos["arquivo_qive_entrada"])
-        df_ctes_filial = self.carregar_relatorio_cte_filial(arquivos["arquivo_cte"])
-        df_notas_servico_filial = self.carregar_relatorio_servico_filial(arquivos["arquivo_servico"])
-
-        df_notas_qive_filial = self.aplicar_limpeza_dados(df_notas_qive_filial)
-        df_ctes_filial = self.aplicar_limpeza_dados(df_ctes_filial)
-        df_notas_servico_filial = self.aplicar_limpeza_dados(df_notas_servico_filial)
-
-        return {
-            "qive-filial": df_notas_qive_filial,
-            "cte-filial": df_ctes_filial,
-            "servico": df_notas_servico_filial
+        documentos = {
+            "qive-filial": self._carregar_se_presente(arquivos, "arquivo_qive_entrada", self.carregar_relatorio_qive_filial),
+            "cte-filial": self._carregar_se_presente(arquivos, "arquivo_cte", self.carregar_relatorio_cte_filial),
+            "servico": self._carregar_se_presente(arquivos, "arquivo_servico", self.carregar_relatorio_servico_filial),
         }
+        return {tipo: df for tipo, df in documentos.items() if df is not None}
 
-    def comparar(self, conferencia, dados, df_erp):
-        comparacao_qive, df_erp = conferencia.comparar_sat_ou_qive_csw(dados["qive-filial"], df_erp, "ChaveAcesso", "Situacao")
-        comparacao_cte, df_erp = conferencia.comparar_sat_ou_qive_csw(dados["cte-filial"], df_erp, "ChaveAcesso", "Situacao")
-        comparacao_servico, df_notas_somente_erp = conferencia.comparar_servicos_csw(dados["servico"], df_erp, "Situacao")
-
-        comparacoes = {
-            "qive-filial": comparacao_qive,
-            "cte-filial": comparacao_cte,
-            "servico": comparacao_servico,
-        }
-        return comparacoes, df_notas_somente_erp
+    def _comparar_tipo(self, conferencia, tipo, df_documento, df_erp):
+        if tipo == "servico":
+            return conferencia.comparar_servicos_csw(df_documento, df_erp, "Situacao")
+        return conferencia.comparar_sat_ou_qive_csw(df_documento, df_erp, "ChaveAcesso", "Situacao")
 
     def aplicar_limpeza_dados(self,dataframe: pd.DataFrame) -> pd.DataFrame:
 
