@@ -154,11 +154,17 @@ def verificar_cancelamentos(dataframe: pd.DataFrame, coluna_data_cancelamento: s
 
     dataframe_copia = dataframe.copy()
 
+    # Bases formadas só por pendências reprocessadas não têm a coluna de data de
+    # cancelamento (ela não é salva no relatório). Nesse caso não há o que derivar:
+    # preserva a Situacao que já veio do mês anterior.
+    if coluna_data_cancelamento not in dataframe_copia.columns:
+        return dataframe_copia
+
     dataframe_copia[coluna_situação] = pd.Series(dtype="string", index=dataframe_copia.index)
 
     condicao_cancelado = dataframe_copia[coluna_data_cancelamento].notna()
 
-    dataframe_copia.loc[condicao_cancelado,coluna_situação] = "Cancelado" 
+    dataframe_copia.loc[condicao_cancelado,coluna_situação] = "Cancelado"
 
     return dataframe_copia
 

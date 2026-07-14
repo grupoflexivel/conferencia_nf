@@ -128,7 +128,7 @@ Para distribuir a ferramenta a usuários sem Python instalado:
 
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --windowed --add-data "logo_topo.png;." --add-data "logo.ico;." main.py
+pyinstaller --onefile --icon=logo.ico --add-data "logo.ico;." --add-data "logo_topo.png;." --name "ConferenciaNotas" main.py
 ```
 
 O executável final é gerado na pasta `dist/`.

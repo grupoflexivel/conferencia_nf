@@ -103,18 +103,27 @@ def main():
     # 1. Carregamento (ERP comum + documentos externos da unidade)
     dados, df_notas_erp = layout.carregar_dados(arquivos)
 
-    # Precisa de ao menos um relatório externo para haver o que comparar.
+    # 2. Notas pendentes do mês anterior.
+    #    Percorre todos os tipos da unidade: além dos que têm arquivo novo, inclui
+    #    os que só existem no arquivo anterior — assim as pendências de um tipo não
+    #    emitido neste período (ex: mês sem CTE novo) não somem do relatório.
+    if arquivo_anterior:
+        abas_anteriores = pd.ExcelFile(arquivo_anterior).sheet_names
+        for tipo in layout.ORDEM_COMPARACAO:
+            if NOMES_ABAS_NO_EXCEL[tipo] not in abas_anteriores:
+                continue
+            dados[tipo] = adicionar_pendentes_mes_anterior(dados.get(tipo), arquivo_anterior, tipo)
+
+        # Descarta tipos que ficaram sem nada (sem arquivo novo e sem pendências).
+        dados = {tipo: df for tipo, df in dados.items() if df is not None and not df.empty}
+
+    # Precisa de ao menos um relatório (novo ou pendente) para haver o que comparar.
     if not dados:
         messagebox.showwarning(
             "Nenhum documento",
-            "Carregue ao menos um relatório externo para comparar (SAT, CTE, Serviço ou QIVE).",
+            "Carregue ao menos um relatório externo, ou um arquivo anterior com pendências, para comparar.",
         )
         return
-
-    # 2. Notas pendentes do mês anterior
-    if arquivo_anterior:
-        for tipo in dados:
-            dados[tipo] = adicionar_pendentes_mes_anterior(dados[tipo], arquivo_anterior, tipo)
 
     # 3. Notas recusadas: monta o registro (antes de suprimir) e remove da base
     chaves_recusadas = (

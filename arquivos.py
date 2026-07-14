@@ -97,10 +97,13 @@ def adicionar_pendentes_mes_anterior(dataframe_atual :pd.DataFrame,
         colunas_importadas=COLUNAS_REPROCESSAMENTO[tipo_documento]
         )
     
-    dataframe_atualizado =pd.concat(
-        [dataframe_mes_anterior, dataframe_atual],
-        ignore_index=True
-    )
+    # dataframe_atual pode ser None quando não houve arquivo novo desse tipo
+    # (só existem pendências do mês anterior a reprocessar).
+    partes = [
+        parte for parte in (dataframe_mes_anterior, dataframe_atual)
+        if parte is not None
+    ]
+    dataframe_atualizado = pd.concat(partes, ignore_index=True)
 
     dataframe_atualizado =remover_documentos_duplicados_reprocessamento(dataframe_atualizado,tipo_documento)
 
