@@ -18,6 +18,12 @@ class ConferenciaNotaFiscal:
         dataframe = dataframe.copy()
         dataframe_csw = dataframe_csw.copy()
 
+        # Garante o mesmo tipo (texto) na coluna-chave dos dois lados. Quando uma
+        # coluna-chave vem inteira vazia (ex: ERP sem nenhuma Chave Nf-e), o pandas
+        # a tipa como float64 e o merge quebra ao comparar float com str.
+        dataframe[coluna_base_comparacao] = dataframe[coluna_base_comparacao].astype("string")
+        dataframe_csw[coluna_base_comparacao] = dataframe_csw[coluna_base_comparacao].astype("string")
+
         merge_dataframes = dataframe.merge(
                 dataframe_csw,
                 on=coluna_base_comparacao,
