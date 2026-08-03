@@ -1,9 +1,12 @@
 import pandas as pd
 import numpy as np
+import time
 
+def obter_ano():
+    tempo_atual = time.localtime()
+    ano_vigente = tempo_atual.tm_year
+    return ano_vigente
 
-
-   
 def limpar_cnpj_cpf(valor):
     if pd.isna(valor):
         return ""
@@ -205,6 +208,9 @@ def limpar_numero_documento_servicos(valor) -> str:
         ''
 
          A ITACEX lança o documento como 202600000054285 mas lançam no CSW como 54285.
+
+         NA FILIAL do Nordeste um documento de serviço pode chegar como 2600000011493 mas lançam no CSW como 11493.
+
     """
     
     if pd.isna(valor):
@@ -217,9 +223,29 @@ def limpar_numero_documento_servicos(valor) -> str:
 
     valor = "".join(caractere for caractere in valor if caractere.isdigit())
 
-    # 4. Regra de negócio: Verifica se começa com '20260' E se possui mais de 9 dígitos,removendo o prefixo (4 primeiros)
-    if valor.startswith("20260") and len(valor) > 9:
-        valor = valor[4:]
+    ano = (obter_ano())
+    ano_passado = ano - 1
+
+    ano = str(ano)
+    ano_passado = str(ano_passado)
+
+    digitos_finais_ano = ano[2:]
+    digitos_finais_ano_passado = ano_passado[2:]
+
+    condicoes = [
+        f"{ano}0",
+        f"{ano_passado}0",
+        f"{digitos_finais_ano}000",
+        f"{digitos_finais_ano_passado}000",
+    ]
+
+    
+
+    # 4. Regra de negócio: Verifica se começa com '20260' ou '26000' E se possui mais de 9 dígitos,removendo o prefixo (4 primeiros)
+    for condicao in condicoes:
+        if valor.startswith(condicao) and len(valor) > 9:
+            valor = valor[4:]
+            break
 
     valor = valor.lstrip("0")
 
