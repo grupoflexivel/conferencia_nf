@@ -79,7 +79,7 @@ def selecionar_unidade():
     ).pack(side=tk.LEFT, padx=10)
 
     tk.Button(
-        frame_botoes, text="Filial MG", command=lambda: escolher("Filial"),
+        frame_botoes, text="Filiais", command=lambda: escolher("Filial"),
         font=("Arial", 11), width=15, height=2, bg="#2196F3", fg="white", cursor="hand2",
     ).pack(side=tk.LEFT, padx=10)
 

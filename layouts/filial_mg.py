@@ -20,7 +20,7 @@ class LayoutFilialMG(LayoutBase):
             {"chave": "arquivo_servico", "titulo": "Arquivo de Notas de Serviço do Qive", "obrigatorio": False},
         ]
 
-        return selecionar_arquivos_gui("Selecione os arquivos - Filial MG", campos)
+        return selecionar_arquivos_gui("Selecione os arquivos - Filiais", campos)
     
     def carregar_relatorio_qive_filial(self,arquivo_qive):
 

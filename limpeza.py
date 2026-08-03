@@ -211,6 +211,8 @@ def limpar_numero_documento_servicos(valor) -> str:
 
          NA FILIAL do Nordeste um documento de serviço pode chegar como 2600000011493 mas lançam no CSW como 11493.
 
+         Isso é tratado com a funçção 
+
     """
     
     if pd.isna(valor):
@@ -241,7 +243,7 @@ def limpar_numero_documento_servicos(valor) -> str:
 
     
 
-    # 4. Regra de negócio: Verifica se começa com '20260' ou '26000' E se possui mais de 9 dígitos,removendo o prefixo (4 primeiros)
+    # 4. Regra de negócio: Verifica se começa com uma das condições, Ex: 2026,26,2025,25
     for condicao in condicoes:
         if valor.startswith(condicao) and len(valor) > 9:
             valor = valor[4:]
