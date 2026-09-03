@@ -1,0 +1,22 @@
+services:
+  conferencia_nf:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5011:5011"
+    environment:
+      OUTPUT_DIR: /app/output
+    volumes:
+      - conferencia_nf_output:/app/output
+    restart: unless-stopped
+    healthcheck:
+      test:
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5011/health', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  conferencia_nf_output:

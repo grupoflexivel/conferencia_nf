@@ -1,29 +1,15 @@
-import pandas as pd
 import warnings
 import traceback
 import time
 
 from tkinter import messagebox
 
-from motor import ConferenciaNotaFiscal
-from layouts.matriz import LayoutMatriz
-from layouts.filial_mg import LayoutFilialMG
-from configs import COLUNAS_SALVAS, NOMES_ABAS_NO_EXCEL
-from excel_utils import formatar_planilha_excel
-from arquivos import adicionar_pendentes_mes_anterior
-from recusadas import coletar_recusadas, suprimir_recusadas, construir_aba_recusadas
+from processamento import LAYOUTS, NenhumDocumentoError, processar_conferencia
 from seletor_unidade import selecionar_unidade
 
 
 # Silencia os avisos chatos do openpyxl
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
-
-# Cada unidade é uma classe de layout
-LAYOUTS = {
-    "Matriz": LayoutMatriz,
-    "Filial": LayoutFilialMG,
-}
-
 
 def tratar_erro_global(erro: Exception) -> None:
     detalhes_tecnicos = traceback.format_exc()
@@ -54,29 +40,6 @@ def tratar_erro_global(erro: Exception) -> None:
     input("\nPressione Enter para Fechar")
 
 
-def exportar_relatorio(caminho, comparacoes, df_notas_somente_erp, df_recusadas):
-    """
-    Escreve o .xlsx com uma aba por tipo comparado, mais 'Notas Somente no ERP'
-    e 'Notas Recusadas'. Os nomes das abas e as colunas vêm do configs.
-    """
-    with pd.ExcelWriter(caminho, engine="xlsxwriter") as writer:
-        for tipo, comparacao in comparacoes.items():
-            comparacao.to_excel(
-                writer,
-                columns=COLUNAS_SALVAS[tipo],
-                sheet_name=NOMES_ABAS_NO_EXCEL[tipo],
-                index=False,
-            )
-
-        df_notas_somente_erp.to_excel(writer, sheet_name="Notas Somente no ERP", index=False)
-        df_recusadas.to_excel(writer, sheet_name="Notas Recusadas", index=False)
-
-        for tipo in comparacoes:
-            formatar_planilha_excel(writer, COLUNAS_SALVAS[tipo], NOMES_ABAS_NO_EXCEL[tipo])
-        formatar_planilha_excel(writer, df_notas_somente_erp.columns.tolist(), "Notas Somente no ERP")
-        formatar_planilha_excel(writer, df_recusadas.columns.tolist(), "Notas Recusadas")
-
-
 def main():
     unidade = selecionar_unidade()
     if not unidade:
@@ -98,52 +61,14 @@ def main():
         )
         return
 
-    arquivo_anterior = arquivos["arquivo_anterior"]
-
-    # 1. Carregamento (ERP comum + documentos externos da unidade)
-    dados, df_notas_erp = layout.carregar_dados(arquivos)
-
-    # 2. Notas pendentes do mês anterior.
-    #    Percorre todos os tipos da unidade: além dos que têm arquivo novo, inclui
-    #    os que só existem no arquivo anterior — assim as pendências de um tipo não
-    #    emitido neste período (ex: mês sem CTE novo) não somem do relatório.
-    if arquivo_anterior:
-        abas_anteriores = pd.ExcelFile(arquivo_anterior).sheet_names
-        for tipo in layout.ORDEM_COMPARACAO:
-            if NOMES_ABAS_NO_EXCEL[tipo] not in abas_anteriores:
-                continue
-            dados[tipo] = adicionar_pendentes_mes_anterior(dados.get(tipo), arquivo_anterior, tipo)
-
-        # Descarta tipos que ficaram sem nada (sem arquivo novo e sem pendências).
-        dados = {tipo: df for tipo, df in dados.items() if df is not None and not df.empty}
-
-    # Precisa de ao menos um relatório (novo ou pendente) para haver o que comparar.
-    if not dados:
+    try:
+        processar_conferencia(layout, arquivos)
+    except NenhumDocumentoError:
         messagebox.showwarning(
             "Nenhum documento",
             "Carregue ao menos um relatório externo, ou um arquivo anterior com pendências, para comparar.",
         )
         return
-
-    # 3. Notas recusadas: monta o registro (antes de suprimir) e remove da base
-    chaves_recusadas = (
-        coletar_recusadas(arquivo_anterior, list(dados))
-        if arquivo_anterior else {tipo: set() for tipo in dados}
-    )
-    df_recusadas = construir_aba_recusadas(dados, chaves_recusadas)
-    for tipo in dados:
-        dados[tipo] = suprimir_recusadas(dados[tipo], tipo, chaves_recusadas[tipo])
-
-    # 4. Processamento (a parte específica de cada unidade)
-    conferencia = ConferenciaNotaFiscal()
-    comparacoes, df_notas_somente_erp = layout.comparar(conferencia, dados, df_notas_erp)
-
-    # 5. Formatação das colunas para exportar
-    for tipo in comparacoes:
-        comparacoes[tipo] = conferencia.formatar_e_limpar_colunas_para_exportar(comparacoes[tipo])
-
-    # 6. Exportação
-    exportar_relatorio(layout.arquivo_saida, comparacoes, df_notas_somente_erp, df_recusadas)
 
     print("Execução Finalizada, fechando a aplicação...")
     time.sleep(1)

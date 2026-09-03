@@ -8,6 +8,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-Data%20Engine-150458?style=for-the-badge&logo=pandas&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-HTTP%20API-000000?style=for-the-badge&logo=flask&logoColor=white)
 ![Tkinter](https://img.shields.io/badge/Tkinter-GUI-FF6F00?style=for-the-badge)
 ![Excel](https://img.shields.io/badge/Excel-Relatórios-217346?style=for-the-badge&logo=microsoftexcel&logoColor=white)
 
@@ -55,6 +56,7 @@ Além de identificar o que falta lançar, o comparador também **destaca diverg�
 | **Parsing de relatórios HTML (CT-e)** | html5lib · lxml |
 | **Interface gráfica** | Tkinter (biblioteca padrão) |
 | **Empacotamento (.exe)** | PyInstaller |
+| **Servidor HTTP** | Flask · Gunicorn |
 
 ---
 
@@ -118,7 +120,32 @@ Ao rodar, a aplicação abre uma janela para você:
 2. **Selecionar os arquivos** de origem (ERP, documentos externos e, opcionalmente, a análise do mês anterior).
 3. **Aguardar o processamento** — ao final, o relatório `comparacao_notas.xlsx` (Matriz) ou `comparacao_notas_filial.xlsx` (Filial) é gerado na pasta de execução.
 
-> ⚙️ **Sem variáveis de ambiente:** esta aplicação é 100% *desktop* e não depende de arquivo `.env`. Toda a configuração de colunas, abas e chaves de comparação está centralizada em [`configs.py`](configs.py).
+> ⚙️ A execução desktop não depende de arquivo `.env`; a execução via Docker usa apenas `OUTPUT_DIR` para definir o diretório persistente dos relatórios. A configuração de colunas, abas e chaves de comparação está centralizada em [`configs.py`](configs.py).
+
+### 5️⃣ Executar via Docker
+
+Para executar a interface HTTP em um servidor Linux com Docker Compose:
+
+```bash
+docker compose build
+docker compose up -d
+docker compose ps
+```
+
+A aplicação escuta em `0.0.0.0:5011` dentro do container e publica a porta `5011` do Docker Host. O acesso deve usar o endereço real do servidor:
+
+```text
+http://IP_DO_SERVIDOR:5011
+```
+
+O IP do servidor não é configurado no código, na imagem ou no Compose. Os relatórios são persistidos no volume nomeado `conferencia_nf_output`. Para acompanhar os logs ou parar o serviço:
+
+```bash
+docker compose logs
+docker compose down
+```
+
+O endpoint `http://IP_DO_SERVIDOR:5011/health` retorna o estado técnico do serviço.
 
 ---
 
@@ -140,6 +167,8 @@ O executável final é gerado na pasta `dist/`.
 ```
 .
 ├── main.py                  # Ponto de entrada: orquestra todo o fluxo de conferência
+├── processamento.py         # Pipeline reutilizável pela GUI e pela interface HTTP
+├── webapp.py                # Interface HTTP Flask para execução em servidor
 ├── motor.py                 # Motor de comparação (merge ERP × documentos, análises)
 ├── configs.py               # Configuração central: colunas, abas e chaves de comparação
 ├── comparacao.py            # Regras de status, divergências e cancelamentos
@@ -149,6 +178,10 @@ O executável final é gerado na pasta `dist/`.
 ├── recusadas.py             # Coleta, supressão e registro de notas recusadas
 ├── excel_utils.py           # Formatação das planilhas de saída
 ├── seletor_unidade.py       # Interface gráfica (Tkinter): unidade e seleção de arquivos
+├── Dockerfile                # Imagem Linux do serviço HTTP
+├── compose.yaml              # Serviço, porta 5011, volume e healthcheck
+├── requirements-docker.txt   # Dependências de runtime do container
+├── .dockerignore             # Exclusões do contexto de build
 ├── layouts/                 # Layouts específicos por unidade
 │   ├── base.py              #   → Classe base compartilhada
 │   ├── matriz.py            #   → Matriz (SAT, CT-e, Serviços)

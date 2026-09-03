@@ -15,16 +15,18 @@ Também existe um fluxo de continuidade mensal: pendências do arquivo anterior 
 
 ## 2. Estado Atual
 
-**Estado identificado:** aplicação parcialmente validada nesta análise.
+**Estado identificado:** aplicação com execução desktop preservada e interface HTTP containerizada; validação técnica Docker concluída e homologação fiscal pendente.
 
 Fatos observados:
 
 - O ponto de entrada é `main.py`.
 - A execução principal é gráfica, usando Tkinter.
 - O fluxo central está implementado para Matriz e Filial.
-- O projeto não contém testes automatizados nem arquivos reais de entrada/saída para uma validação ponta a ponta.
-- A sintaxe dos 14 arquivos Python atualmente presentes foi validada por AST e os módulos principais da aplicação puderam ser importados sem executar a interface.
+- O projeto contém testes automatizados mínimos para a camada HTTP em `tests/test_webapp.py`, mas não possui arquivos reais de entrada/saída para uma validação ponta a ponta.
+- A sintaxe dos 17 arquivos Python atualmente presentes, incluindo testes, foi validada por AST; os módulos principais puderam ser importados sem executar a interface.
 - O auxiliar experimental `selector.py` foi removido nesta tarefa por não ser necessário ao fluxo principal.
+- A execução HTTP foi adicionada com Flask/Gunicorn; o serviço Docker foi validado como saudável na porta publicada `5011`.
+- A tela HTTP agora usa logo, seleção inicial de unidade e liberação progressiva dos anexos por JavaScript.
 - O README afirma status “em produção”, mas essa afirmação não foi verificada funcionalmente nesta análise.
 
 Pendências de investigação:
@@ -41,10 +43,11 @@ Pendências de investigação:
 - Escrita/formatação de Excel: `xlsxwriter==3.2.9`.
 - Parsing de relatório HTML de CT-e: `html5lib==1.1`, `beautifulsoup4==4.15.0`, `lxml==6.1.1` e `webencodings==0.5.1`.
 - Interface gráfica: Tkinter, biblioteca da instalação Python; não aparece como dependência do `requirements.txt`.
+- Interface HTTP: Flask `3.1.3` e Gunicorn `26.2.0`, declarados em `requirements-docker.txt`.
 - Empacotamento: `pyinstaller==6.21.0`, `altgraph`, `pefile`, `pyinstaller-hooks-contrib` e dependências auxiliares.
 - Utilitários declarados: `python-dateutil`, `tzdata`, `packaging`, `setuptools`, `six`, `soupsieve`, `typing_extensions`, `et_xmlfile` e `pywin32-ctypes`.
 
-O arquivo `requirements.txt` contém as versões fixadas acima, está codificado em UTF-16 little-endian com terminadores CRLF e inclui tanto dependências de execução quanto ferramentas de empacotamento. Não há `pyproject.toml`, `setup.py`, `Pipfile` ou arquivo `.env.example`.
+O arquivo `requirements.txt` contém as dependências desktop/build existentes, está codificado em UTF-16 little-endian com terminadores CRLF e inclui ferramentas de empacotamento. `requirements-docker.txt` contém o subconjunto de runtime necessário ao serviço HTTP, acrescido de Flask/Gunicorn. Não há `pyproject.toml`, `setup.py`, `Pipfile` ou arquivo `.env.example`.
 
 ## 4. Estrutura do Projeto
 
@@ -60,6 +63,15 @@ conferencia_nf/
 ├── recusadas.py
 ├── excel_utils.py
 ├── seletor_unidade.py
+├── processamento.py
+├── webapp.py
+├── Dockerfile
+├── compose.yaml
+├── requirements-docker.txt
+├── .dockerignore
+├── tests/
+│   ├── test_webapp.py
+│   └── test_frontend_flow.js
 ├── requirements.txt
 ├── README.md
 ├── logo.ico
@@ -90,40 +102,57 @@ Responsabilidade dos componentes:
 | `recusadas.py` | Coleta, persistência temporária, supressão e montagem da aba de notas recusadas. |
 | `excel_utils.py` | Congelamento, larguras, filtros, proteção e formatos das abas exportadas. |
 | `seletor_unidade.py` | Janelas Tkinter para seleção de unidade e arquivos; resolução de recursos para Python/PyInstaller. |
+| `processamento.py` | Pipeline compartilhado de validação, carregamento, reprocessamento, comparação e exportação. |
+| `webapp.py` | Interface HTTP Flask, formulário progressivo, entrega da logo, upload temporário, healthcheck e download do relatório. |
+| `Dockerfile` | Imagem Linux do serviço HTTP, dependências, usuário não-root e comando Gunicorn. |
+| `compose.yaml` | Publicação da porta 5011, volume de saída, restart policy e healthcheck. |
+| `requirements-docker.txt` | Dependências Python de runtime para o container. |
+| `.dockerignore` | Arquivos excluídos do contexto de build. |
+| `tests/test_webapp.py` | Testes mínimos da interface HTTP e do contrato de upload, sem validação semântica de Excel. |
+| `tests/test_frontend_flow.js` | Teste Node do JavaScript real embutido em `webapp.py`, usando DOM mínimo simulado. |
 
 ## 5. Arquitetura e Fluxo Geral
 
-A arquitetura atual é procedural/orquestrada por `main.py`, com uma classe de motor compartilhada e subclasses de layout para diferenças de formato. As dependências internas principais são:
+A arquitetura atual é procedural/orquestrada por um pipeline compartilhado em `processamento.py`. `main.py` mantém a entrada desktop/Tkinter, enquanto `webapp.py` fornece a entrada HTTP para execução em servidor. A classe de motor e as subclasses de layout continuam responsáveis pelas regras e formatos existentes.
 
 ```text
 main.py
 ├── seletor_unidade.py
-├── layouts.matriz / layouts.filial_mg
-│   ├── layouts.base
-│   ├── relatorios_csw.py
-│   └── limpeza.py
-├── arquivos.py
-│   └── comparacao.py
-├── recusadas.py
-├── motor.py
-│   ├── comparacao.py
-│   └── limpeza.py
-└── excel_utils.py
+└── processamento.py
+    ├── layouts.matriz / layouts.filial_mg
+    │   ├── layouts.base
+    │   ├── relatorios_csw.py
+    │   └── limpeza.py
+    ├── arquivos.py
+    │   └── comparacao.py
+    ├── recusadas.py
+    ├── motor.py
+    │   ├── comparacao.py
+    │   └── limpeza.py
+    └── excel_utils.py
+
+webapp.py
+├── processamento.py
+└── Flask/Gunicorn
 ```
 
 Fluxo de execução:
 
-1. `selecionar_unidade()` abre a janela e retorna `Matriz`, `Filial` ou `None`.
-2. `main()` instancia o layout correspondente e abre a janela de seleção de arquivos.
-3. Pelo menos um relatório ERP — entrada ou devolução — é exigido.
-4. O layout carrega e normaliza os documentos externos selecionados.
-5. Se houver arquivo anterior, cada tipo da ordem do layout é analisado para reincorporar pendências.
-6. Notas recusadas são coletadas do arquivo anterior, registradas e removidas antes dos merges.
-7. Os tipos presentes são comparados sequencialmente contra o restante do ERP.
-8. O restante do ERP é exportado como `Notas Somente no ERP`.
-9. O relatório é escrito no diretório de execução com `xlsxwriter` e formatado/protegido.
+1. Na execução desktop, `selecionar_unidade()` abre a janela e retorna `Matriz`, `Filial` ou `None`.
+2. Na execução HTTP, a tela inicial exibe `logo_topo.png` e permite escolher `Matriz` ou `Filial` antes de mostrar os anexos.
+3. Após a escolha, JavaScript exibe e habilita somente o conjunto de campos da unidade selecionada; os campos da outra unidade permanecem ocultos e desabilitados.
+4. Na execução HTTP, `webapp.py` recebe a unidade e os uploads multipart em `POST /process`.
+5. `main.py` ou `webapp.py` instancia o layout e chama `processar_conferencia()`.
+6. Pelo menos um relatório ERP — entrada ou devolução — é exigido.
+7. O layout carrega e normaliza os documentos externos selecionados.
+8. Se houver arquivo anterior, cada tipo da ordem do layout é analisado para reincorporar pendências.
+9. Notas recusadas são coletadas do arquivo anterior, registradas e removidas antes dos merges.
+10. Os tipos presentes são comparados sequencialmente contra o restante do ERP.
+11. O restante do ERP é exportado como `Notas Somente no ERP`.
+12. O relatório é escrito no diretório de execução com `xlsxwriter` e formatado/protegido.
+13. Na execução HTTP, o relatório é disponibilizado como download e também permanece no volume de saída.
 
-O processamento é síncrono. Não existe banco de dados, API, serviço externo, persistência fora dos arquivos Excel ou configuração por ambiente.
+O processamento é síncrono. A interface HTTP não usa banco de dados, serviço externo ou IP fixo; usa apenas diretório temporário para uploads e volume para saída. A configuração `OUTPUT_DIR` pode apontar para o diretório de relatórios do container.
 
 ## 6. Fluxo de Dados
 
@@ -136,6 +165,17 @@ O processamento é síncrono. Não existe banco de dados, API, serviço externo,
 - **Falhas possíveis:** indisponibilidade de display/Tkinter; seleção de arquivo com formato incompatível; fechamento da janela.
 
 Todos os campos exibidos na GUI são opcionais no nível do seletor. A obrigatoriedade do ERP é verificada depois em `main.py`; o restante do fluxo exige pelo menos um documento externo novo ou uma pendência anterior.
+
+### 6.1a Entrada HTTP
+
+- **Arquivo:** `webapp.py`.
+- **Rotas:** `GET /`, `POST /process`, `GET /health` e `GET /logo_topo.png`.
+- **Recebe:** formulário `multipart/form-data` com `unidade` e arquivos nomeados por unidade, por exemplo `Matriz__arquivo_sat` ou `Filial__arquivo_qive_entrada`.
+- **Interface:** começa mostrando a logo e as opções `Matriz`/`Filial`; após a seleção, mostra somente os campos correspondentes. Ao trocar a unidade, o JavaScript limpa todos os arquivos escolhidos antes de atualizar os campos.
+- **Validação de interface:** o botão fica desabilitado até haver unidade, ao menos um arquivo ERP (`arquivo_notas_entrada` ou `arquivo_devolucoes`) e ao menos um documento/arquivo anterior.
+- **Transforma:** grava os uploads em diretório temporário, aplica `secure_filename()` e passa os caminhos ao mesmo pipeline usado pela GUI.
+- **Retorna:** formulário HTML, JSON de saúde, mensagem HTTP de erro ou download do `.xlsx`.
+- **Falhas possíveis:** unidade inválida, nome de arquivo inválido, ausência de ERP/documentos, erro de leitura, erro do pipeline ou impossibilidade de gravar no volume de saída.
 
 ### 6.2 Leitura do ERP
 
@@ -249,6 +289,12 @@ Não existem arquivos de entrada Excel/HTML de exemplo no repositório. Os forma
 - **Abas utilizadas:** nomes de comparação definidos em `NOMES_ABAS_NO_EXCEL` e `Notas Recusadas`.
 - **Critério de pendência:** status textual exatamente igual a `Não lançada no CSW`.
 
+### Uploads HTTP
+
+- Os arquivos enviados pela interface web são temporários e removidos ao final da requisição.
+- O upload não altera os arquivos do host nem exige paths absolutos do Windows.
+- O nome final do relatório segue o layout e é gravado em `OUTPUT_DIR`, por padrão `/app/output` dentro do container.
+
 ## 8. Arquivos de Saída
 
 O arquivo é criado no diretório de execução com nome fixo:
@@ -273,6 +319,8 @@ Além das abas de tipos efetivamente presentes, o arquivo sempre tenta gerar:
 
 As colunas das abas de comparação são restringidas por `COLUNAS_SALVAS`. A exportação usa `xlsxwriter`, congela a primeira linha, configura filtros, largura padrão 28 e protege a aba deixando as células de dados editáveis e o cabeçalho bloqueado. Não há senha de proteção configurada.
 
+Na interface HTTP, o arquivo gerado é retornado como download na mesma requisição. Uma cópia também fica no volume `conferencia_nf_output`, montado em `/app/output`.
+
 ## 9. Regras de Negócio Confirmadas
 
 Somente regras observáveis diretamente no código:
@@ -296,6 +344,11 @@ Somente regras observáveis diretamente no código:
 17. A coleta de recusadas combina linhas recusadas das abas de comparação com linhas do ledger `Notas Recusadas`; a supressão ocorre antes dos merges.
 18. O ledger de recusadas é reconstruído usando apenas recusadas que ainda aparecem na base atual, portanto o código pretende que o registro se limpe quando a nota deixa de existir na base.
 19. A ordenação final converte datas nos formatos `%d/%m/%Y`, `%d/%m/%Y %H:%M:%S`, `%Y-%m-%d` e `%Y-%m-%d %H:%M:%S`; datas não interpretadas ficam por último.
+20. A interface HTTP inicia com os uploads ocultos e desabilitados; somente a escolha de `Matriz` ou `Filial` libera o conjunto de campos correspondente.
+21. A interface mantém os nomes de campos prefixados esperados pelo backend, como `Matriz__arquivo_sat` e `Filial__arquivo_qive_entrada`.
+22. A interface bloqueia o botão de processamento até haver unidade, pelo menos um arquivo ERP e pelo menos um documento ou arquivo anterior selecionado; a validação do backend continua sendo executada.
+23. Ao trocar a unidade na interface HTTP, os valores de todos os inputs de arquivo são limpos antes da nova unidade ser habilitada.
+24. `logo_topo.png`, armazenada na raiz do repositório, é entregue por uma rota dedicada e referenciada no template com `url_for()`.
 
 ## 10. Hipóteses / Pontos que Precisam de Validação
 
@@ -404,6 +457,8 @@ Fragilidades observadas:
 - O tratamento global não substitui validação de schema antes do processamento.
 - `input()` pode ser inadequado em uma distribuição sem console.
 - Erros durante uma janela de seleção ou durante escrita podem chegar ao tratamento global sem contexto operacional suficiente.
+- A camada web registra exceções inesperadas no log do Gunicorn/Flask e retorna HTTP 500 sem expor o traceback ao usuário.
+- O processamento HTTP usa um único worker Gunicorn por decisão operacional para evitar concorrência desnecessária em processamento pesado; requisições simultâneas aguardam na fila.
 
 ## 14. Bugs Conhecidos
 
@@ -457,7 +512,7 @@ Não foram registrados outros bugs funcionais como confirmados sem arquivos de e
 
 ### Alta
 
-- Não há testes automatizados, fixtures Excel/HTML ou validação ponta a ponta.
+- Ainda não há testes automatizados para o pipeline fiscal nem fixtures Excel/HTML; existem somente testes mínimos da camada HTTP.
 - Os contratos de entrada estão espalhados entre `configs.py` e loaders, sem validação de schema e sem mensagens específicas por coluna/arquivo.
 - O merge não declara cardinalidade; duplicidades podem produzir múltiplas linhas sem uma decisão explícita de negócio.
 - O arquivo de saída tem nome fixo e é aberto diretamente, sem confirmação, versionamento ou backup.
@@ -468,11 +523,12 @@ Não foram registrados outros bugs funcionais como confirmados sem arquivos de e
 - Loaders de Matriz e Filial repetem a estrutura de leitura, renomeação e conversão.
 - Regras de negócio e strings de status estão distribuídas entre `main.py`, `motor.py`, `comparacao.py`, `arquivos.py` e `configs.py`.
 - `requirements.txt` inclui ferramentas de empacotamento junto com dependências de runtime e usa UTF-16, o que dificulta inspeção manual e interoperabilidade.
+- O template HTTP, o CSS e o JavaScript permanecem embutidos em `webapp.py`; há teste do fluxo JavaScript em DOM simulado, mas ainda não há teste de integração executado em um navegador real.
 - Há imports aparentemente não utilizados (`numpy` em `arquivos.py`, `StringIO` em `layouts/filial_mg.py`, entre outros); não foram removidos por não fazerem parte do escopo.
 
 ### Baixa
 
-- README e implementação divergem em nomes de recursos visuais e terminologia de Filial/Filial MG.
+- README e implementação ainda usam terminologia diferente de Filial/Filial MG em alguns pontos.
 - Não há metadados de versão da aplicação, changelog formal ou convenção registrada para nomes de arquivos de entrada.
 - Não há documentação de amostras de colunas em arquivos reais.
 
@@ -490,9 +546,9 @@ Estas são oportunidades documentadas, não implementadas nesta tarefa:
 - Definir política para duplicidades, chaves vazias e valores nulos antes de alterar o merge.
 - Extrair contratos e regras de comparação do orquestrador para componentes menores sem mudar o comportamento sem autorização.
 - Tornar o caminho do arquivo de saída configurável e evitar sobrescrita silenciosa.
-- Corrigir a referência de recurso no README.
 - Separar dependências de runtime das dependências de build e normalizar a codificação do `requirements.txt`, após validar o processo de instalação usado pela equipe.
 - Adicionar logging estruturado e mensagens de erro associadas à etapa/arquivo/coluna que falhou.
+- Adicionar validação automatizada da interface em navegador real para seleção de unidade, troca de cenário, acessibilidade e responsividade.
 
 ## 17. Sprints / Trabalhos em Andamento
 
@@ -537,11 +593,55 @@ Estas são oportunidades documentadas, não implementadas nesta tarefa:
 
 **Critérios de conclusão:** cenários reproduzíveis documentados e resultados revisados pelo responsável funcional.
 
+### SPRINT-003 — Dockerização HTTP
+
+**Objetivo:** Disponibilizar a aplicação por HTTP em container Linux, mantendo a lógica fiscal existente e publicando a porta 5011 sem IP fixo.
+
+**Status:**
+- Concluído
+
+**Tarefas:**
+- [x] Criar camada Flask/Gunicorn reutilizando o pipeline existente.
+- [x] Separar o pipeline comum em `processamento.py` para uso desktop e HTTP.
+- [x] Criar `Dockerfile` com Python 3.14 slim e usuário não-root.
+- [x] Criar `compose.yaml` com `5011:5011`, volume de saída, restart policy e healthcheck.
+- [x] Criar `.dockerignore` e dependências de runtime do container.
+- [x] Validar build, startup, logs, healthcheck, publicação e reinício.
+
+**Dependências:** Docker Engine/Compose e acesso à rede para baixar imagem base e pacotes durante o build.
+
+**Bloqueios:** a homologação funcional do conteúdo dos Excel permanece sob responsabilidade do usuário.
+
+**Critérios de conclusão:** imagem construída, container saudável, aplicação escutando em `0.0.0.0:5011`, acesso HTTP local e pelo IP real de teste validados.
+
+### SPRINT-004 — Fluxo progressivo da interface web
+
+**Objetivo:** Organizar a tela HTTP para iniciar pela seleção de unidade e liberar somente os anexos aplicáveis, preservando o contrato atual do Flask.
+
+**Status:**
+- Concluído
+
+**Tarefas:**
+- [x] Exibir `logo_topo.png` no cabeçalho por rota dedicada e `url_for()`.
+- [x] Exibir `Matriz` e `Filial` como seleção inicial com os valores atuais do backend.
+- [x] Ocultar e desabilitar os conjuntos de upload no estado inicial.
+- [x] Exibir/habilitar somente os campos da unidade selecionada.
+- [x] Limpar uploads ao alternar entre Matriz e Filial.
+- [x] Manter o botão bloqueado até os requisitos mínimos de interface serem atendidos.
+- [x] Atualizar testes HTTP, persistir o teste de interação JavaScript e registrar a alteração no contexto técnico.
+
+**Dependências:** JavaScript habilitado no navegador; contrato de campos existente em `webapp.py`; Node.js para executar o teste persistente do frontend.
+
+**Bloqueios:** validação visual em navegador real e homologação funcional dos arquivos Excel ainda não foram executadas.
+
+**Critérios de conclusão:** estado inicial, seleção de cada unidade, limpeza na troca, habilitação do botão, rota da logo e compatibilidade dos nomes de campos validados tecnicamente.
+
 ## 18. Roadmap
 
 ### Curto prazo
 
 - Confirmar com usuários e arquivos reais que as correções dos dois bugs não alteram o fluxo operacional esperado.
+- Validar a interface web em navegador real, incluindo telas menores, foco por teclado e troca entre unidades.
 - Criar cobertura automatizada para as funções puras de limpeza e comparação.
 - Validar os contratos dos arquivos reais e registrar exemplos de entrada não sensíveis.
 
@@ -584,6 +684,36 @@ Estas são oportunidades documentadas, não implementadas nesta tarefa:
 **Validações executadas:** `selector.py` ausente; 13 módulos principais importados; busca sem referências a `logo.png` no README; `logo_topo.png` presente.
 
 **Resultado:** BUG-001 e BUG-002 corrigidos e documentados como corrigidos.
+
+### 2026-09-03 — Dockerização da aplicação para acesso HTTP
+
+**Objetivo:** Adaptar a aplicação desktop para execução em servidor Linux através de Docker, com acesso pela porta TCP 5011.
+
+**Arquivos modificados:** `main.py`, `seletor_unidade.py`, `README.md` e `CONTEXTO.md`.
+
+**Arquivos criados:** `processamento.py`, `webapp.py`, `Dockerfile`, `compose.yaml`, `.dockerignore`, `requirements-docker.txt` e `tests/test_webapp.py`.
+
+**Alterações realizadas:** extração do pipeline comum para `processamento.py`; criação de formulário HTTP Flask com `/`, `/process` e `/health`; uploads temporários; download do relatório; importação tardia de Tkinter para permitir execução headless; container Python 3.14 slim com Gunicorn, usuário não-root, volume nomeado de saída e publicação `5011:5011`.
+
+**Impactos:** regras de comparação e formato dos dados não foram alterados intencionalmente. A execução desktop continua disponível por `python main.py`; a execução containerizada usa a interface HTTP.
+
+**Validações executadas:** testes HTTP unitários (`3` testes OK); `docker compose config`; build da imagem; container `healthy`; logs de Gunicorn sem erro crítico; publicação `0.0.0.0:5011->5011/tcp`; HTTP 200 em localhost e no IP real de teste `172.17.55.165`; reinício com retorno a `healthy`.
+
+**Resultado:** dockerização técnica concluída. A validação funcional dos arquivos Excel resultantes permanece pendente e será executada manualmente pelo responsável pelo projeto.
+
+### 2026-09-03 — Interface web com seleção progressiva de unidade
+
+**Objetivo:** Melhorar o fluxo visual da tela Flask, apresentando a escolha entre Matriz e Filial antes dos anexos e incorporando a logo existente.
+
+**Arquivos modificados:** `webapp.py`, `tests/test_webapp.py`, `tests/test_frontend_flow.js` e `CONTEXTO.md`.
+
+**Alterações realizadas:** criada a rota `GET /logo_topo.png`; o template passou a referenciar a imagem com `url_for()`; a seleção de unidade passou a usar radios com os valores existentes; os uploads são ocultados/desabilitados inicialmente e somente o conjunto selecionado é liberado; a troca de unidade limpa os inputs de arquivo; o botão verifica os requisitos mínimos de interface antes de permitir o envio; CSS responsivo e estados de foco foram adicionados inline; a indicação visual da opção selecionada usa classe JavaScript, sem depender de `:has`; o teste de interação frontend foi persistido.
+
+**Impactos:** nenhuma regra de comparação, leitura de arquivos, processamento Pandas, contrato de nomes de campos ou rota `POST /process` foi alterado. O uso da interface depende de JavaScript habilitado.
+
+**Validações executadas:** suíte HTTP com 5 testes OK; compilação Python; `node tests/test_frontend_flow.js` executando o JavaScript real para estado inicial, seleção de Matriz/Filial, liberação, limpeza na troca, indicação visual e bloqueio do envio; validação da rota da logo e revisão de paths/contratos.
+
+**Resultado:** fluxo progressivo implementado; validação funcional do conteúdo dos Excel permanece pendente e será executada manualmente pelo responsável pelo projeto.
 
 ### Histórico anterior observado
 
@@ -646,6 +776,66 @@ O Git registra, entre outros, os seguintes marcos anteriores:
 
 **Impactos:** Nenhum impacto funcional identificado; os dois bugs tratados nesta decisão estão corrigidos.
 
+### DEC-005 — Adicionar camada HTTP separada e manter a GUI
+
+**Contexto:** O código original usa Tkinter e não possui servidor HTTP, mas o requisito de Docker exige acesso por `http://IP_DO_SERVIDOR:5011`.
+
+**Decisão:** Criar `webapp.py` com Flask/Gunicorn e extrair o pipeline para `processamento.py`; manter `main.py` como entrada desktop.
+
+**Motivo:** Atender ao acesso HTTP sem executar Tkinter no container e sem duplicar as regras de negócio entre interfaces.
+
+**Alternativas consideradas:** Executar Tkinter com ambiente gráfico virtual não atenderia naturalmente ao acesso HTTP; criar outro serviço de comparação duplicaria o pipeline existente. Ambas foram descartadas para esta implementação.
+
+**Impactos:** O container usa upload HTTP e download do resultado; o processamento continua síncrono e usa um worker Gunicorn. A GUI permanece dependente de ambiente desktop.
+
+### DEC-006 — Publicar a porta sem amarrar IP do host
+
+**Contexto:** O endereço do Docker Host varia entre ambientes.
+
+**Decisão:** Usar `ports: ["5011:5011"]` no Compose e bind Gunicorn em `0.0.0.0:5011`.
+
+**Motivo:** Deixar o Docker publicar em todas as interfaces do host, permitindo `http://IP_DO_SERVIDOR:5011` sem hardcode de endereço.
+
+**Alternativas consideradas:** Binding em `127.0.0.1` ou em IP fixo do host; não utilizadas porque restringiriam ou tornariam a configuração dependente do ambiente.
+
+**Impactos:** Firewall, ACL, VLAN, roteamento e NAT continuam fora do escopo e podem bloquear acesso remoto mesmo com a publicação correta.
+
+### DEC-007 — Usar volume nomeado somente para saída
+
+**Contexto:** Uploads HTTP são temporários e o relatório gerado deve sobreviver à recriação do container.
+
+**Decisão:** Montar `conferencia_nf_output` em `/app/output`; manter uploads em diretório temporário removido ao final da requisição.
+
+**Motivo:** Persistir somente o artefato de saída necessário, sem persistir dados de entrada temporários.
+
+**Alternativas consideradas:** Não persistir saída ou montar diretórios amplos do host; não adotadas para evitar perda do relatório ou exposição desnecessária de paths.
+
+**Impactos:** O volume precisa ser mantido pelo operador; `docker compose down -v` remove o volume e os relatórios nele armazenados.
+
+### DEC-008 — Servir a logo raiz por rota dedicada
+
+**Contexto:** `logo_topo.png` existe na raiz do projeto e não há diretório `static/` ou template separado.
+
+**Decisão:** Servir somente esse arquivo por `GET /logo_topo.png` usando `send_from_directory()` e referenciá-lo no template com `url_for()`.
+
+**Motivo:** Preservar a localização existente da imagem sem expor a raiz inteira do repositório como diretório estático.
+
+**Alternativas consideradas:** Mover/copiá-la para `static/` ou configurar a raiz do projeto como diretório estático; não adotadas por introduzirem movimentação, duplicação ou exposição desnecessária.
+
+**Impactos:** `webapp.py` passou a possuir uma rota de recurso visual; não houve alteração no processamento.
+
+### DEC-009 — Preservar o contrato HTTP e controlar a unidade no cliente
+
+**Contexto:** O backend procura `unidade` e arquivos com prefixos como `Matriz__arquivo_sat` e `Filial__arquivo_qive_entrada`.
+
+**Decisão:** Implementar a seleção progressiva somente no template/JavaScript, mantendo os valores, nomes dos inputs e a rota `POST /process` existentes.
+
+**Motivo:** Alterar a experiência de uso sem alterar regras fiscais, parsing de arquivos ou contratos do servidor.
+
+**Alternativas consideradas:** Criar endpoints distintos por unidade ou alterar o payload para nomes sem prefixo; não adotadas por ampliarem o escopo e quebrarem compatibilidade.
+
+**Impactos:** A interface requer JavaScript habilitado; o backend continua responsável pela validação definitiva.
+
 ## 21. Riscos Conhecidos
 
 - Um arquivo com nome de coluna, aba ou formato diferente pode falhar somente durante a leitura ou exportação.
@@ -658,6 +848,10 @@ O Git registra, entre outros, os seguintes marcos anteriores:
 - O workbook de saída pode sobrescrever um arquivo existente com o mesmo nome e não há confirmação documentada.
 - A aplicação depende de Tkinter e foi projetada/documentada para Windows; a execução em ambientes sem GUI não foi validada.
 - Recursos visuais podem não aparecer se não forem empacotados corretamente no PyInstaller.
+- O acesso pelo IP real pode ser bloqueado por firewall do host ou por camadas corporativas externas ao Docker; nenhuma política de firewall foi alterada.
+- O formulário web permite enviar arquivos de entrada, mas a validação semântica dos dados fiscais continua fora desta tarefa.
+- Se o JavaScript estiver desabilitado, a interface progressiva manterá os anexos ocultos e o usuário não conseguirá iniciar o processamento pela tela web.
+- A seleção progressiva foi validada com testes HTTP e execução controlada do JavaScript persistida em `tests/test_frontend_flow.js`; a renderização visual em navegadores e tamanhos de tela reais ainda requer validação operacional.
 
 ## 22. Como Executar o Projeto
 
@@ -680,6 +874,67 @@ O operador seleciona a unidade, os arquivos ERP/documentos e, opcionalmente, o a
 
 O arquivo é gravado no diretório corrente como `comparacao_notas.xlsx` para Matriz ou `comparacao_notas_filial.xlsx` para Filial. O processo não recebe argumentos de linha de comando e não usa `.env`.
 
+### Execução via Docker
+
+Arquivos usados: `Dockerfile`, `compose.yaml`, `.dockerignore` e `requirements-docker.txt`.
+
+Imagem base: `python:3.14-slim`.
+
+Processo: Gunicorn executando `webapp:app` com um worker, timeout de 300 segundos e bind em `0.0.0.0:5011`.
+
+Interface HTTP:
+
+1. Acessar `http://IP_DO_SERVIDOR:5011/`.
+2. Selecionar `Matriz` ou `Filial`.
+3. Anexar os arquivos da unidade exibida; os nomes enviados preservam o formato prefixado usado pelo backend.
+4. Confirmar que o botão é liberado após um arquivo ERP e um documento/arquivo anterior serem selecionados.
+5. Acionar `Processar e baixar relatório`.
+
+O recurso visual `logo_topo.png` é servido por `GET /logo_topo.png`. Os uploads da unidade não selecionada permanecem ocultos, desabilitados e não são enviados; ao trocar a unidade, os arquivos escolhidos são limpos.
+
+Build:
+
+```bash
+docker compose build
+```
+
+Inicialização:
+
+```bash
+docker compose up -d
+```
+
+Parada:
+
+```bash
+docker compose down
+```
+
+Diagnóstico:
+
+```bash
+docker compose ps
+docker compose logs
+docker compose config
+```
+
+Portas:
+
+- Porta externa no Docker Host: `5011`.
+- Porta interna do container: `5011`.
+- Publicação: `5011:5011`, sem endereço IP fixo.
+- URL conceitual: `http://IP_DO_SERVIDOR:5011`.
+
+Volumes:
+
+- `conferencia_nf_output` → `/app/output`: persistente, usado para relatórios gerados.
+- Uploads: diretório temporário interno, removido ao final de cada requisição.
+
+Variáveis de ambiente:
+
+- `OUTPUT_DIR`: diretório de saída da aplicação; padrão `/app/output`.
+- Não há variável para o IP do Docker Host.
+
 ### Empacotamento declarado no README
 
 ```bash
@@ -693,10 +948,32 @@ Esse comando foi documentado no README, mas a geração do executável não foi 
 
 ### Validações estáticas já executadas
 
-- Analisar AST de todos os 14 arquivos Python atuais para confirmar sintaxe.
+- Analisar AST de todos os 17 arquivos Python atuais, incluindo testes, para confirmar sintaxe.
 - Importar os módulos principais sem iniciar a GUI.
 - Verificar presença dos recursos `logo.ico` e `logo_topo.png` e ausência de `logo.png`/`NotaServico.xlsx`.
 - Executar cenários sintéticos do motor para status lançado/não lançado, cancelamento, chave de serviço e restante ERP.
+
+### Validações técnicas Docker já executadas
+
+- `python -B -m unittest discover -s tests -v`: 5 testes HTTP aprovados.
+- `docker compose config`: configuração válida, com `5011` publicado para `5011`.
+- `docker compose build`: imagem construída com sucesso.
+- `docker compose up -d`: container iniciado.
+- `docker compose ps`: container `healthy`, executando como `appuser`.
+- `docker compose logs`: Gunicorn ouvindo em `0.0.0.0:5011`, sem erro crítico de inicialização.
+- `docker port`: `5011/tcp -> 0.0.0.0:5011` e IPv6 equivalente.
+- `curl http://localhost:5011/health`: HTTP 200.
+- `curl http://localhost:5011/`: HTTP 200.
+- `curl http://172.17.55.165:5011/health`: HTTP 200; `172.17.55.165` foi usado somente no ambiente de teste.
+- Reinício via `docker compose restart`: container retornou a `healthy` e `/health` voltou HTTP 200.
+- `GET /` foi validado com a logo referenciada, radios de `Matriz`/`Filial`, seções de upload inicialmente ocultas/desabilitadas e botão inicialmente desabilitado.
+- `GET /logo_topo.png` foi validado com HTTP 200 e `Content-Type` PNG.
+- O JavaScript real embutido no template foi executado em harness Node: seleção de Matriz e Filial, exibição/habilitação do conjunto correto, limpeza dos arquivos na troca, bloqueio/liberação do botão e bloqueio durante o envio.
+- `node tests/test_frontend_flow.js`: teste persistente do fluxo JavaScript aprovado.
+- `python3 -m py_compile webapp.py tests/test_webapp.py` foi executado com sucesso.
+- A validação funcional dos arquivos Excel resultantes não foi realizada e permanece sob responsabilidade do usuário.
+
+Não foi executado teste visual em navegador real, pois não há navegador headless ou Playwright/Selenium disponível no ambiente desta análise; a responsividade foi implementada por CSS com viewport, grid adaptável e media query para telas menores.
 
 ### Validação funcional recomendada
 
@@ -716,7 +993,7 @@ Esses cenários ainda não foram executados de ponta a ponta porque não existem
 ## 24. Última Análise do Projeto
 
 - **Data:** 2026-09-03.
-- **Objetivo:** Compreender a aplicação atual e criar memória técnica persistente sem modificar o código funcional.
-- **Arquivos analisados:** `README.md`, `requirements.txt`, `.gitignore`, `main.py`, `motor.py`, `configs.py`, `comparacao.py`, `limpeza.py`, `relatorios_csw.py`, `arquivos.py`, `recusadas.py`, `excel_utils.py`, `seletor_unidade.py`, `layouts/__init__.py`, `layouts/base.py`, `layouts/matriz.py`, `layouts/filial_mg.py`, `logo.ico`, `logo_topo.png`; `selector.py` também foi analisado antes da remoção autorizada, além do estado do Git e dos artefatos locais observados.
-- **Estado identificado:** fluxo principal implementado, sem testes/fixtures versionados, com validação estática e sintética possível; `selector.py` removido; `BUG-001` e `BUG-002` corrigidos; validação real ainda pendente.
-- **Pendências:** validar contratos de entrada e regras com dados reais; decidir tratamento de duplicidades/nulos/sobrescrita; confirmar o resultado operacional das correções; manter este documento atualizado após qualquer alteração relevante.
+- **Objetivo:** Revisar a interface web após a dockerização, com seleção progressiva de Matriz/Filial e uso de `logo_topo.png`, sem alteração das regras de processamento.
+- **Arquivos analisados:** `CONTEXTO.md`, `webapp.py`, `tests/test_webapp.py`, `tests/test_frontend_flow.js`, `processamento.py`, `layouts/base.py`, `layouts/matriz.py`, `layouts/filial_mg.py`, `main.py`, `Dockerfile`, `compose.yaml`, `.dockerignore`, `requirements-docker.txt`, `README.md` e `logo_topo.png`; os contratos de campos e rotas foram conferidos nos módulos relacionados.
+- **Estado identificado:** interface HTTP com logo servida por rota dedicada; seleção inicial por radios; uploads por unidade ocultos/desabilitados até a escolha; limpeza segura na troca; botão controlado por requisitos mínimos de interface; backend, Docker e nomes de campos preservados.
+- **Pendências:** validação visual em navegador real e telas físicas; homologação funcional do conteúdo dos arquivos Excel; validação com arquivos reais de entrada; avaliação futura de concorrência, limites de upload e política operacional do volume.

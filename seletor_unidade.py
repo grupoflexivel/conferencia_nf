@@ -1,12 +1,18 @@
 import os
 import sys
-import tkinter as tk
-from tkinter import filedialog, messagebox
 
 
 # --- Identidade visual (logo / ícone) -------------------------------------
 ARQUIVO_ICONE = "logo.ico"
 ARQUIVO_LOGO = "logo_topo.png"
+
+
+def _importar_tkinter():
+    """Importa Tkinter somente quando a interface desktop é utilizada."""
+    import tkinter as tk
+    from tkinter import filedialog, messagebox
+
+    return tk, filedialog, messagebox
 
 
 def _caminho_recurso(nome_arquivo):
@@ -27,6 +33,7 @@ def _aplicar_icone(janela):
 def _criar_logo(parent):
     """Cria um Label com o logo, ou None se a imagem não existir. Guarda a
     referência da imagem no próprio Label para o Tkinter não descartá-la."""
+    tk, _, _ = _importar_tkinter()
     try:
         imagem = tk.PhotoImage(file=_caminho_recurso(ARQUIVO_LOGO))
     except Exception:
@@ -41,6 +48,7 @@ def selecionar_unidade():
     Exibe um dialog gráfico com botões para o usuário escolher a unidade.
     Retorna 'Matriz' ou 'Filial', ou None se cancelado.
     """
+    tk, _, _ = _importar_tkinter()
     janela = tk.Tk()
     janela.title("Conferência de Notas Fiscais")
     janela.geometry("400x300")
@@ -109,6 +117,7 @@ def selecionar_arquivos(titulo_janela, campos):
         {chave: caminho_ou_None} com o que o usuário escolheu, ou None se ele
         cancelar/fechar a janela.
     """
+    tk, filedialog, messagebox = _importar_tkinter()
     TEXTO_VAZIO = "(nenhum arquivo selecionado)"
 
     janela = tk.Tk()
