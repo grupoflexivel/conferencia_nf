@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="logo.png" alt="Grupo Flexível" width="220"/>
+<img src="logo_topo.png" alt="Grupo Flexível" width="220"/>
 
 # 📊 Conferência de Notas Fiscais — ERP × Documentos Fiscais
 
@@ -153,7 +153,7 @@ O executável final é gerado na pasta `dist/`.
 │   ├── base.py              #   → Classe base compartilhada
 │   ├── matriz.py            #   → Matriz (SAT, CT-e, Serviços)
 │   └── filial_mg.py         #   → Filial MG (Qive, CT-e, Serviços)
-├── logo.png                 # Identidade visual
+├── logo_topo.png            # Identidade visual
 └── README.md
 ```
 
