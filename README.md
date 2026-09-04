@@ -147,6 +147,8 @@ docker compose down
 
 O endpoint `http://IP_DO_SERVIDOR:5011/health` retorna o estado técnico do serviço.
 
+A interface web utiliza `logo_flexivel.ico` como ícone do navegador, servido pela rota `/logo_flexivel.ico`.
+
 ---
 
 ### 📦 (Opcional) Gerar o executável `.exe`
@@ -187,6 +189,7 @@ O executável final é gerado na pasta `dist/`.
 │   ├── matriz.py            #   → Matriz (SAT, CT-e, Serviços)
 │   └── filial_mg.py         #   → Filial MG (Qive, CT-e, Serviços)
 ├── logo_topo.png            # Identidade visual
+├── logo_flexivel.ico        # Favicon da interface web
 └── README.md
 ```
 

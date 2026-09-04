@@ -44,6 +44,7 @@ FORMULARIO = """
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="{{ url_for('favicon') }}" type="image/x-icon">
   <title>Conferência de Notas Fiscais</title>
   <style>
     :root {
@@ -437,6 +438,11 @@ app = Flask(__name__)
 @app.get("/logo_topo.png")
 def logo_topo():
     return send_from_directory(app.root_path, "logo_topo.png")
+
+
+@app.get("/logo_flexivel.ico")
+def favicon():
+    return send_from_directory(app.root_path, "logo_flexivel.ico")
 
 
 @app.get("/health")

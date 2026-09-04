@@ -76,6 +76,7 @@ conferencia_nf/
 ├── README.md
 ├── logo.ico
 ├── logo_topo.png
+├── favicon.ico
 └── layouts/
     ├── __init__.py
     ├── base.py
@@ -169,12 +170,12 @@ Todos os campos exibidos na GUI são opcionais no nível do seletor. A obrigator
 ### 6.1a Entrada HTTP
 
 - **Arquivo:** `webapp.py`.
-- **Rotas:** `GET /`, `POST /process`, `GET /health` e `GET /logo_topo.png`.
+- **Rotas:** `GET /`, `POST /process`, `GET /health`, `GET /logo_topo.png` e `GET /favicon.ico`.
 - **Recebe:** formulário `multipart/form-data` com `unidade` e arquivos nomeados por unidade, por exemplo `Matriz__arquivo_sat` ou `Filial__arquivo_qive_entrada`.
 - **Interface:** começa mostrando a logo e as opções `Matriz`/`Filial`; após a seleção, mostra somente os campos correspondentes. Ao trocar a unidade, o JavaScript limpa todos os arquivos escolhidos antes de atualizar os campos.
 - **Validação de interface:** o botão fica desabilitado até haver unidade, ao menos um arquivo ERP (`arquivo_notas_entrada` ou `arquivo_devolucoes`) e ao menos um documento/arquivo anterior.
 - **Transforma:** grava os uploads em diretório temporário, aplica `secure_filename()` e passa os caminhos ao mesmo pipeline usado pela GUI.
-- **Retorna:** formulário HTML, JSON de saúde, mensagem HTTP de erro ou download do `.xlsx`.
+- **Retorna:** formulário HTML com referência ao favicon, JSON de saúde, recursos visuais, mensagem HTTP de erro ou download do `.xlsx`.
 - **Falhas possíveis:** unidade inválida, nome de arquivo inválido, ausência de ERP/documentos, erro de leitura, erro do pipeline ou impossibilidade de gravar no volume de saída.
 
 ### 6.2 Leitura do ERP
@@ -715,6 +716,40 @@ Estas são oportunidades documentadas, não implementadas nesta tarefa:
 
 **Resultado:** fluxo progressivo implementado; validação funcional do conteúdo dos Excel permanece pendente e será executada manualmente pelo responsável pelo projeto.
 
+### 2026-09-04 — Implementação do favicon da interface web
+
+**Objetivo:** Derivar um favicon da identidade visual existente e disponibilizá-lo na interface HTTP.
+
+**Arquivos modificados:** `webapp.py`, `tests/test_webapp.py`, `README.md` e `CONTEXTO.md`.
+
+**Arquivo criado:** `favicon.png`.
+
+**Alterações realizadas:** criada uma versão quadrada RGBA da `logo_topo.png`; adicionada a rota `GET /favicon.png`; incluída a referência `<link rel="icon">` no cabeçalho HTML; adicionados testes para a rota e para a referência renderizada.
+
+**Impactos:** nenhuma regra fiscal ou contrato de upload foi alterado. O favicon é usado pela interface HTTP e é incluído automaticamente no contexto Docker pela cópia da raiz do projeto.
+
+**Validações executadas:** suíte HTTP com 6 testes OK; `node tests/test_frontend_flow.js`; compilação Python; inspeção técnica do arquivo como PNG 256×256 RGBA.
+
+**Resultado:** favicon implementado e servido pela aplicação web.
+
+### 2026-09-04 — Substituição do favicon pelo ícone X
+
+**Objetivo:** Substituir o favicon baseado no wordmark por um ícone X mais legível em tamanhos reduzidos.
+
+**Arquivos modificados:** `webapp.py`, `tests/test_webapp.py`, `README.md` e `CONTEXTO.md`.
+
+**Arquivo removido:** `favicon.png`.
+
+**Arquivo criado:** `favicon.ico`.
+
+**Alterações realizadas:** o ícone X anexado foi preparado como favicon com os tamanhos 16, 32, 48 e 256 px; a rota e a referência HTML foram alteradas de PNG para ICO; os testes foram ajustados ao novo contrato.
+
+**Impactos:** nenhuma regra fiscal ou contrato de upload foi alterado. O favicon anterior foi removido conforme solicitado.
+
+**Validações executadas:** suíte HTTP, teste frontend, compilação Python e inspeção do cabeçalho ICO e dos quatro recursos PNG embutidos.
+
+**Resultado:** favicon X implementado na interface web.
+
 ### Histórico anterior observado
 
 O Git registra, entre outros, os seguintes marcos anteriores:
@@ -968,6 +1003,7 @@ Esse comando foi documentado no README, mas a geração do executável não foi 
 - Reinício via `docker compose restart`: container retornou a `healthy` e `/health` voltou HTTP 200.
 - `GET /` foi validado com a logo referenciada, radios de `Matriz`/`Filial`, seções de upload inicialmente ocultas/desabilitadas e botão inicialmente desabilitado.
 - `GET /logo_topo.png` foi validado com HTTP 200 e `Content-Type` PNG.
+- `GET /favicon.ico` foi validado com HTTP 200 e cabeçalho ICO válido; o arquivo contém recursos PNG nos tamanhos 16, 32, 48 e 256 px, derivados do ícone X anexado.
 - O JavaScript real embutido no template foi executado em harness Node: seleção de Matriz e Filial, exibição/habilitação do conjunto correto, limpeza dos arquivos na troca, bloqueio/liberação do botão e bloqueio durante o envio.
 - `node tests/test_frontend_flow.js`: teste persistente do fluxo JavaScript aprovado.
 - `python3 -m py_compile webapp.py tests/test_webapp.py` foi executado com sucesso.
@@ -992,8 +1028,8 @@ Esses cenários ainda não foram executados de ponta a ponta porque não existem
 
 ## 24. Última Análise do Projeto
 
-- **Data:** 2026-09-03.
-- **Objetivo:** Revisar a interface web após a dockerização, com seleção progressiva de Matriz/Filial e uso de `logo_topo.png`, sem alteração das regras de processamento.
-- **Arquivos analisados:** `CONTEXTO.md`, `webapp.py`, `tests/test_webapp.py`, `tests/test_frontend_flow.js`, `processamento.py`, `layouts/base.py`, `layouts/matriz.py`, `layouts/filial_mg.py`, `main.py`, `Dockerfile`, `compose.yaml`, `.dockerignore`, `requirements-docker.txt`, `README.md` e `logo_topo.png`; os contratos de campos e rotas foram conferidos nos módulos relacionados.
-- **Estado identificado:** interface HTTP com logo servida por rota dedicada; seleção inicial por radios; uploads por unidade ocultos/desabilitados até a escolha; limpeza segura na troca; botão controlado por requisitos mínimos de interface; backend, Docker e nomes de campos preservados.
+- **Data:** 2026-09-04.
+- **Objetivo:** Substituir o favicon da interface HTTP por um ícone X mais legível, preservando o fluxo progressivo de seleção de unidade.
+- **Arquivos analisados:** `CONTEXTO.md`, `webapp.py`, `tests/test_webapp.py`, `tests/test_frontend_flow.js`, `processamento.py`, `layouts/base.py`, `layouts/matriz.py`, `layouts/filial_mg.py`, `main.py`, `Dockerfile`, `compose.yaml`, `.dockerignore`, `requirements-docker.txt`, `README.md`, `logo_topo.png` e `favicon.ico`; os contratos de campos e rotas foram conferidos nos módulos relacionados.
+- **Estado identificado:** interface HTTP com logo e favicon servidos por rotas dedicadas; seleção inicial por radios; uploads por unidade ocultos/desabilitados até a escolha; limpeza segura na troca; botão controlado por requisitos mínimos de interface; backend, Docker e nomes de campos preservados.
 - **Pendências:** validação visual em navegador real e telas físicas; homologação funcional do conteúdo dos arquivos Excel; validação com arquivos reais de entrada; avaliação futura de concorrência, limites de upload e política operacional do volume.

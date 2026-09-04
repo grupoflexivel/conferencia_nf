@@ -29,6 +29,10 @@ class WebAppTestCase(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn('multipart/form-data', html)
         self.assertRegex(html, r'<img[^>]+src="/logo_topo\.png"')
+        self.assertRegex(
+            html,
+            r'<link[^>]+rel="icon"[^>]+href="/logo_flexivel\.ico"[^>]+type="image/x-icon"',
+        )
         self.assertIn('type="radio" name="unidade" value="Matriz"', html)
         self.assertIn('type="radio" name="unidade" value="Filial"', html)
         self.assertIn('name="Matriz__arquivo_sat"', html)
@@ -46,6 +50,14 @@ class WebAppTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.content_type.startswith("image/png"))
+        response.close()
+
+    def test_favicon_route_returns_ico(self):
+        response = self.client.get("/logo_flexivel.ico")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.content_type.startswith("image/"))
+        self.assertEqual(response.data[:4], b"\x00\x00\x01\x00")
         response.close()
 
     def test_process_requires_unit(self):
