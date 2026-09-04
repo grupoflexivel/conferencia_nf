@@ -76,7 +76,7 @@ conferencia_nf/
 ├── README.md
 ├── logo.ico
 ├── logo_topo.png
-├── favicon.ico
+├── logo_flexivel.ico
 └── layouts/
     ├── __init__.py
     ├── base.py
@@ -170,7 +170,7 @@ Todos os campos exibidos na GUI são opcionais no nível do seletor. A obrigator
 ### 6.1a Entrada HTTP
 
 - **Arquivo:** `webapp.py`.
-- **Rotas:** `GET /`, `POST /process`, `GET /health`, `GET /logo_topo.png` e `GET /favicon.ico`.
+- **Rotas:** `GET /`, `POST /process`, `GET /health`, `GET /logo_topo.png` e `GET /logo_flexivel.ico`.
 - **Recebe:** formulário `multipart/form-data` com `unidade` e arquivos nomeados por unidade, por exemplo `Matriz__arquivo_sat` ou `Filial__arquivo_qive_entrada`.
 - **Interface:** começa mostrando a logo e as opções `Matriz`/`Filial`; após a seleção, mostra somente os campos correspondentes. Ao trocar a unidade, o JavaScript limpa todos os arquivos escolhidos antes de atualizar os campos.
 - **Validação de interface:** o botão fica desabilitado até haver unidade, ao menos um arquivo ERP (`arquivo_notas_entrada` ou `arquivo_devolucoes`) e ao menos um documento/arquivo anterior.
@@ -1033,3 +1033,16 @@ Esses cenários ainda não foram executados de ponta a ponta porque não existem
 - **Arquivos analisados:** `CONTEXTO.md`, `webapp.py`, `tests/test_webapp.py`, `tests/test_frontend_flow.js`, `processamento.py`, `layouts/base.py`, `layouts/matriz.py`, `layouts/filial_mg.py`, `main.py`, `Dockerfile`, `compose.yaml`, `.dockerignore`, `requirements-docker.txt`, `README.md`, `logo_topo.png` e `favicon.ico`; os contratos de campos e rotas foram conferidos nos módulos relacionados.
 - **Estado identificado:** interface HTTP com logo e favicon servidos por rotas dedicadas; seleção inicial por radios; uploads por unidade ocultos/desabilitados até a escolha; limpeza segura na troca; botão controlado por requisitos mínimos de interface; backend, Docker e nomes de campos preservados.
 - **Pendências:** validação visual em navegador real e telas físicas; homologação funcional do conteúdo dos arquivos Excel; validação com arquivos reais de entrada; avaliação futura de concorrência, limites de upload e política operacional do volume.
+
+> As referências a `favicon.ico` nos registros históricos anteriores descrevem uma versão anterior da aplicação. O arquivo não faz parte do runtime atual.
+
+## 25. Atualização do favicon e limpeza de artefatos
+
+- **Data:** 2026-09-04.
+- **Objetivo:** Registrar o favicon atualmente utilizado e remover recursos visuais que não possuem referência no runtime.
+- **Estado atual:** a interface HTTP referencia `logo_flexivel.ico` no HTML e o entrega pela rota `GET /logo_flexivel.ico`; `logo_topo.png` continua sendo servido pela rota `GET /logo_topo.png`.
+- **Arquivos mantidos:** `logo_flexivel.ico` (favicon web), `logo_topo.png` (logo da interface) e `logo.ico` (ícone da aplicação desktop e do empacotamento PyInstaller).
+- **Arquivos removidos:** `favicon.ico`, `Icone X - Flexível.png` e os arquivos auxiliares `Zone.Identifier` associados aos artefatos removidos ou ao favicon atual.
+- **Arquivos atualizados:** `README.md` e `tests/test_webapp.py`, alinhados à rota `/logo_flexivel.ico`.
+- **Validações:** `venv/bin/python -B -m unittest discover -s tests -v` executado com 6 testes aprovados; `node tests/test_frontend_flow.js` executado com resultado `frontend-flow: OK`.
+- **Impactos:** nenhuma regra fiscal, contrato de upload ou fluxo de processamento foi alterado.
